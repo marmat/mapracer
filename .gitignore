@@ -1,0 +1,12 @@
+# Misc
+.DS_Store
+*~
+
+# Android
+*.apk
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+local.properties
