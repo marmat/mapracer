@@ -1,6 +1,8 @@
 # Misc
 .DS_Store
 *~
+sftp-config.json
+*.sublime-workspace
 
 # Android
 *.apk

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Sender</title>
+  <script>
+    var APPLICATION_ID = '807AB2E8';
+    var session = null;
+
+    window['__onGCastApiAvailable'] = function(loaded, errorInfo) {
+      if (loaded) {
+        initializeCastApi();
+      } else {
+        console.log(errorInfo);
+      }
+    }
+
+    function initializeCastApi() {
+      console.log('Initializing Cast API');
+      var sessionRequest = new chrome.cast.SessionRequest(APPLICATION_ID);
+      var apiConfig = new chrome.cast.ApiConfig(sessionRequest,
+          sessionListener, receiverListener);
+
+      chrome.cast.initialize(apiConfig, onInitSuccess, onError);
+    }
+
+    function onInitSuccess() {
+      console.log('Init success');
+      chrome.cast.requestSession(sessionListener, onError);
+    }
+
+    function onError() {
+      console.log('Error!');
+    }
+
+    function sessionListener(e) {
+      console.log('SessionListener@' + e.sessionId);
+      session = e;
+    }
+
+    function receiverListener(e) {
+      console.log('ReceiverListener');
+      console.dir(e);
+      if (e === chrome.cast.ReceiverAvailability.AVAILABLE) {
+        console.log('Receiver available!');
+      }
+      console.log('ReceiverListener Done');
+    }
+
+  </script>
+</head>
+<body>
+  <h1>Hello, Chrome!</h1>
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
+</body>
+</html>
