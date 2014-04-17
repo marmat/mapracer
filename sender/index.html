@@ -4,7 +4,10 @@
   <title>Simple Sender</title>
   <script>
     var APPLICATION_ID = '807AB2E8';
+    var NAMESPACE = 'urn:x-cast:de.martinmatysiak.mapracer';
     var session = null;
+    var clickTarget = null;
+    var targetLatLng = null;
 
     window['__onGCastApiAvailable'] = function(loaded, errorInfo) {
       if (loaded) {
@@ -21,6 +24,18 @@
           sessionListener, receiverListener);
 
       chrome.cast.initialize(apiConfig, onInitSuccess, onError);
+
+      console.log('Initializing Maps');
+      window.map = new google.maps.Map(document.getElementById('map'),
+        {
+          zoom: 14,
+          center: new google.maps.LatLng(50.7658, 6.1059),
+          mapTypeId: google.maps.MapTypeId.ROADMAP,
+        });
+
+      google.maps.event.addListener(window.map, 'click', onMapsClick);
+      document.querySelector('#pick').onclick = onPickClick;
+      document.querySelector('#transmit').onclick = onTransmitClick;
     }
 
     function onInitSuccess() {
@@ -38,18 +53,56 @@
     }
 
     function receiverListener(e) {
-      console.log('ReceiverListener');
-      console.dir(e);
-      if (e === chrome.cast.ReceiverAvailability.AVAILABLE) {
-        console.log('Receiver available!');
+      console.log('ReceiverListener:' + e);
+    }
+
+    function onPickClick(e) {
+      clickTarget = document.querySelector("#location");
+    }
+
+    function onTransmitClick(e) {
+      console.log('Sending target to Chromecast');
+      var payload = {
+        type: 'target',
+        title: document.querySelector('#title').value,
+        location: targetLatLng,
       }
-      console.log('ReceiverListener Done');
+
+      session.sendMessage(NAMESPACE, payload, function() {
+        console.log('Transmit success!');
+      }, function(e) {
+        console.log('Transmit fail: ' + e);
+      });
+    }
+
+    function onMapsClick(e) {
+      if (clickTarget != null) {
+        clickTarget.value = e.latLng.toUrlValue();
+        targetLatLng = {lat: e.latLng.lat(), lng: e.latLng.lng()};
+        clickTarget = null;
+      } else {
+        sendPlayerPosition(e.latLng);
+      }
+    }
+
+    function sendPlayerPosition(location) {
+      // TODO
     }
 
   </script>
+  <script src="//maps.googleapis.com/maps/api/js?v=3.exp&amp;sensor=false"></script>
 </head>
 <body>
   <h1>Hello, Chrome!</h1>
+
+  Create a new target:
+  <input id="title" placeholder="Target..." />
+  <input id="location" placeholder="Latitude, Longitude" />
+  <button id="pick" type="button">Pick</button>
+  <button id="transmit" type="button">Transmit</button>
+  <div id="map" style="height:300px; width:500px"></div>
+
+
   <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
 </body>
 </html>
