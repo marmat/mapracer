@@ -68,11 +68,8 @@
         location: targetLatLng,
       }
 
-      session.sendMessage(NAMESPACE, payload, function() {
-        console.log('Transmit success!');
-      }, function(e) {
-        console.log('Transmit fail: ' + e);
-      });
+      session.sendMessage(NAMESPACE, payload,
+          onTransmitSuccess, onTransmitError);
     }
 
     function onMapsClick(e) {
@@ -86,7 +83,21 @@
     }
 
     function sendPlayerPosition(location) {
-      // TODO
+      var payload = {
+        type: 'position',
+        location: {lat: location.lat(), lng: location.lng()}
+      };
+
+      session.sendMessage(NAMESPACE, payload,
+          onTransmitSuccess, onTransmitError);
+    }
+
+    function onTransmitSuccess() {
+      console.log('Transmit success!');
+    }
+
+    function onTransmitError(e) {
+      console.log('Transmit error: ' + e);
     }
 
   </script>

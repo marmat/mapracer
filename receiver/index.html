@@ -51,6 +51,8 @@
         document.querySelector('#target').innerHTML = payload.title;
         map.setCenter(payload.location);
         new google.maps.Marker({map: map, position: payload.location});
+      } else if (payload.type == 'position') {
+        new google.maps.Marker({map: map, position: payload.location, icon: 'http://marmat.github.io/google-maps-api-addons/panomarker/examples/info.png', title: e.senderId});
       }
     }
 
