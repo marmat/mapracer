@@ -22,10 +22,10 @@ MapRacer = function() {
   this.targetEl = document.querySelector('#target');
 
   /** @type {cast.receiver.CastReceiverManager} */
-  this.castReceiverManager = null;
+  this.receiverManager = null;
 
   /** @type {cast.receiver.CastMessageBus} */
-  this.castMessageBus = null;
+  this.messageBus = null;
 
   /** @type {google.maps.Map} */
   this.map = null;
@@ -44,6 +44,9 @@ MapRacer = function() {
     anchor: new google.maps.Point(12, 12)
   };
 
+  /** @type {google.maps.LatLng} */
+  this.startLocation = {lat: 50.761596, lng: 6.137060};
+
   /**
    * Map from Sender ID to the Sender object containing all connected devices.
    * @type {Object.<string, cast.receiver.system.Sender>}
@@ -57,10 +60,14 @@ MapRacer = function() {
 
 /** @private */
 MapRacer.prototype.initializeCast_ = function() {
-  this.castReceiverManager = cast.receiver.CastReceiverManager.getInstance();
-  this.castMessageBus = this.castReceiverManager.getCastMessageBus(NAMESPACE);
-  this.castMessageBus.onMessage = this.onCastMessage.bind(this);
-  this.castReceiverManager.start();
+  this.receiverManager = cast.receiver.CastReceiverManager.getInstance();
+  this.receiverManager.onSenderConnected = this.onConnect.bind(this);
+  this.receiverManager.onSenderDisconnected = this.onDisconnect.bind(this);
+
+  this.messageBus = this.receiverManager.getCastMessageBus(NAMESPACE);
+  this.messageBus.onMessage = this.onCastMessage.bind(this);
+
+  this.receiverManager.start();
 };
 
 
@@ -95,10 +102,35 @@ MapRacer.prototype.onCastMessage = function(message) {
       icon: this.targetIcon
     });
   } else if (payload.type == 'position') {
-    new google.maps.Marker({
-      map: this.map,
-      position: payload.location,
-      icon: this.playerIcon
-    });
+    if (!!this.players[message.senderId]) {
+      this.players[message.senderId].marker.setPosition(payload.location);
+    }
   }
+};
+
+
+/** @param {cast.receiver.CastReceiverManager.Event} client The client. */
+MapRacer.prototype.onConnect = function(client) {
+  console.log('Client connected!');
+  console.dir(client);
+
+  var player = this.receiverManager.getSender(client.data);
+  player.marker = new google.maps.Marker({
+    map: this.map,
+    position: this.startLocation,
+    icon: this.playerIcon
+  });
+
+  this.players[client.data] = player;
+  console.dir(this.players);
+};
+
+
+/** @param {cast.receiver.CastReceiverManager.Event} client The client. */
+MapRacer.prototype.onDisconnect = function(client) {
+  console.log('Client disconnected!');
+  console.dir(client);
+
+  this.players[client.data].marker.setMap(null);
+  delete this.players[client.data];
 };
