@@ -1,8 +1,10 @@
+<!DOCTYPE html>
 <html>
 <head>
-  <title>Example minimum receiver</title>
+  <title>MapRacer</title>
   <script src="//www.gstatic.com/cast/sdk/libs/receiver/2.0.0/cast_receiver.js"></script>
   <script src="//maps.googleapis.com/maps/api/js?v=3.exp&amp;sensor=false"></script>
+  <script src="mapracer.js"></script>
   <style>
     body {
       font-size: 25px;
@@ -10,7 +12,11 @@
       padding: 0;
     }
 
-    #map {
+    h1 {
+      margin-bottom: 0;
+    }
+
+    html, body, #map {
       height: 100%;
       width: 100%;
     }
@@ -27,49 +33,19 @@
       position:fixed;
       width: 100%;
     }
-
-    h1 {
-      margin-bottom: 0;
-    }
   </style>
 </head>
-<body style="background-color:white">
+
+<body>
   <div id="map"></div>
   <div id="infobar">
     <h1>Race to <span id="target">$TARGET_NAME_HERE</span></h1>
     <span id="time">00:00:01.234</span>
   </div>
+
   <script>
-    var NAMESPACE = 'urn:x-cast:de.martinmatysiak.mapracer';
-
-    function onMessage(e) {
-      console.log('Got a message!');
-      console.dir(e);
-
-      var payload = JSON.parse(e.data);
-      if (payload.type == 'target') {
-        document.querySelector('#target').innerHTML = payload.title;
-        map.setCenter(payload.location);
-        new google.maps.Marker({map: map, position: payload.location});
-      } else if (payload.type == 'position') {
-        new google.maps.Marker({map: map, position: payload.location, icon: 'http://marmat.github.io/google-maps-api-addons/panomarker/examples/info.png', title: e.senderId});
-      }
-    }
-
     window.onload = function() {
-      window.castReceiverManager = cast.receiver.CastReceiverManager.getInstance();
-      window.castMessageBus = window.castReceiverManager.getCastMessageBus(NAMESPACE);
-      window.castMessageBus.onMessage = onMessage;
-      window.castReceiverManager.start();
-
-      window.map = new google.maps.Map(document.getElementById('map'),
-        {
-          zoom: 14,
-          center: new google.maps.LatLng(50.7658, 6.1059),
-          mapTypeId: google.maps.MapTypeId.ROADMAP,
-          disableDefaultUI: true,
-          draggable: false
-        });
+      window.mapRacer = new MapRacer();
     }
   </script>
 </body>
