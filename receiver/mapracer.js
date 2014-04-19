@@ -6,6 +6,7 @@
 
 /** @const */
 var NAMESPACE = 'urn:x-cast:de.martinmatysiak.mapracer';
+var MIN_PLAYERS = 1;
 
 
 
@@ -20,6 +21,9 @@ MapRacer = function() {
 
   /** @type {Element} */
   this.targetEl = document.querySelector('#target');
+
+  /** @type {Element} */
+  this.splashEl = document.querySelector('#splash');
 
   /** @type {cast.receiver.CastReceiverManager} */
   this.receiverManager = null;
@@ -44,8 +48,8 @@ MapRacer = function() {
     anchor: new google.maps.Point(12, 12)
   };
 
-  /** @type {google.maps.LatLng} */
-  this.startLocation = {lat: 50.761596, lng: 6.137060};
+  /** @type {Object.<string, *>} */
+  this.race = null;
 
   /**
    * Map from Sender ID to the Sender object containing all connected devices.
@@ -55,6 +59,7 @@ MapRacer = function() {
 
   this.initializeCast_();
   this.initializeMap_();
+  this.maybeHideSplashScreen_();
 };
 
 
@@ -87,6 +92,14 @@ MapRacer.prototype.initializeMap_ = function() {
 };
 
 
+/** @private */
+MapRacer.prototype.maybeHideSplashScreen_ = function() {
+  if (!!this.race && Object.keys(this.players).length >= MIN_PLAYERS) {
+    this.splashEl.style.opacity = '0';
+  }
+};
+
+
 /** @param {cast.receiver.CastMessageBus.Event} message The incoming message. */
 MapRacer.prototype.onCastMessage = function(message) {
   console.log('Got a message!');
@@ -94,6 +107,11 @@ MapRacer.prototype.onCastMessage = function(message) {
 
   var payload = JSON.parse(message.data);
   if (payload.type == 'target') {
+    var race = {
+      title: payload.title,
+      end: payload.location
+    };
+
     this.targetEl.innerHTML = payload.title;
     this.map.setCenter(payload.location);
     new google.maps.Marker({
@@ -101,6 +119,19 @@ MapRacer.prototype.onCastMessage = function(message) {
       position: payload.location,
       icon: this.targetIcon
     });
+
+    // Generate a start location not too far away
+    race.start = new google.maps.LatLng(50.761596, 6.137060);
+
+    // Reposition all players
+    for (var playerId in this.players) {
+      this.players[playerId].marker.setPosition(race.start);
+      this.players[playerId].path.setPath([race.start]);
+    }
+
+    this.race = race;
+    this.maybeHideSplashScreen_();
+
   } else if (payload.type == 'position') {
     var player = this.players[message.senderId];
     if (!!player) {
@@ -122,20 +153,20 @@ MapRacer.prototype.onConnect = function(client) {
   var player = this.receiverManager.getSender(client.data);
   player.marker = new google.maps.Marker({
     map: this.map,
-    position: this.startLocation,
+    position: !!this.race ? this.race.start : {lat: 0, lng: 0},
     icon: this.playerIcon
   });
 
   player.path = new google.maps.Polyline({
     map: this.map,
-    path: [this.startLocation],
+    path: [!!this.race ? this.race.start : new google.maps.LatLng(0, 0)],
     strokeColor: '#4390F7',
     strokeOpacity: 0.6,
     strokeWeight: 4
   });
 
   this.players[client.data] = player;
-  console.dir(this.players);
+  this.maybeHideSplashScreen_();
 };
 
 
