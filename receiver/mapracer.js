@@ -102,8 +102,13 @@ MapRacer.prototype.onCastMessage = function(message) {
       icon: this.targetIcon
     });
   } else if (payload.type == 'position') {
-    if (!!this.players[message.senderId]) {
-      this.players[message.senderId].marker.setPosition(payload.location);
+    var player = this.players[message.senderId];
+    if (!!player) {
+      // Note: the path wants actual g.m.LatLng objects, contrary to most
+      // other methods...
+      player.marker.setPosition(payload.location);
+      player.path.getPath().push(
+          new google.maps.LatLng(payload.location.lat, payload.location.lng));
     }
   }
 };
@@ -121,6 +126,14 @@ MapRacer.prototype.onConnect = function(client) {
     icon: this.playerIcon
   });
 
+  player.path = new google.maps.Polyline({
+    map: this.map,
+    path: [this.startLocation],
+    strokeColor: '#4390F7',
+    strokeOpacity: 0.6,
+    strokeWeight: 4
+  });
+
   this.players[client.data] = player;
   console.dir(this.players);
 };
@@ -132,5 +145,6 @@ MapRacer.prototype.onDisconnect = function(client) {
   console.dir(client);
 
   this.players[client.data].marker.setMap(null);
+  this.players[client.data].path.setMap(null);
   delete this.players[client.data];
 };
