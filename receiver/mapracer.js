@@ -25,6 +25,9 @@ MapRacer = function() {
   /** @type {Element} */
   this.splashEl = document.querySelector('#splash');
 
+  /** @type {Element} */
+  this.countdownEl = document.querySelector('#countdown');
+
   /** @type {cast.receiver.CastReceiverManager} */
   this.receiverManager = null;
 
@@ -96,7 +99,27 @@ MapRacer.prototype.initializeMap_ = function() {
 MapRacer.prototype.maybeHideSplashScreen_ = function() {
   if (!!this.race && Object.keys(this.players).length >= MIN_PLAYERS) {
     this.splashEl.style.opacity = '0';
+    setInterval(this.countdown_.bind(this), 1000);
   }
+};
+
+
+/** @private */
+MapRacer.prototype.countdown_ = function() {
+  var old = document.querySelector('.counter');
+  if (!!old) {
+    old.parentNode.removeChild(old);
+  }
+
+  var counter = document.createElement('span');
+  counter.innerHTML = '5';
+  counter.className = 'counter';
+
+  this.countdownEl.appendChild(counter);
+  setTimeout(function() {
+    counter.style.fontSize = '220px';
+    counter.style.opacity = '0';
+  }, 10);
 };
 
 

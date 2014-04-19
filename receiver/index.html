@@ -44,7 +44,7 @@
       width: 100%;
     }
 
-    #title {
+    h1 {
       bottom: 0;
       color: white;
       font-weight: 100;
@@ -57,6 +57,18 @@
       text-shadow: 2px 3px 6px rgba(0,0,0,0.5);
       top: 0;
     }
+
+    .counter {
+      color: white;
+      font-size: 50px;
+      opacity: 1;
+      position: absolute;
+      text-align: center;
+      text-shadow: 0px 0px 10px rgba(0,0,0,0.5);
+      top: 10%;
+      transition: font-size 1s, opacity 1s;
+      width: 100%;
+    }
   </style>
 </head>
 
@@ -65,6 +77,9 @@
   <div id="infobar">
     <h2>Race to <span id="target">$TARGET_NAME_HERE</span></h2>
     <span id="time">00:00:01.234</span>
+  </div>
+  <div id="countdown">
+    <h1>Get Ready!</h1>
   </div>
   <div id="splash">
     <h1 id="title">MapRacer</h1>
