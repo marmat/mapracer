@@ -1,6 +1,7 @@
 package de.martinmatysiak.mapracer;
 
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBarActivity;
@@ -142,6 +143,12 @@ public class MenuActivity
     @Override
     public void onConnectionFailed(ConnectionResult result) {
         Log.w(TAG, "GoogleApi connection failed: " + result.toString());
+    }
+
+    public void onClick(View v) {
+        Intent intent = new Intent(this, MapActivity.class);
+        intent.putExtra("device", mSelectedDevice);
+        startActivity(intent);
     }
 
     private void updateUi() {
