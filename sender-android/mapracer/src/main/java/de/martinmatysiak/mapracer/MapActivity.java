@@ -19,7 +19,7 @@ public class MapActivity
         extends Activity
         implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
-    final static String TAG = "mapracer:map";
+    final static String TAG = "MapActivity";
 
     CastDevice mSelectedDevice;
     GoogleApiClient mApiClient;
@@ -85,7 +85,7 @@ public class MapActivity
     public void onConnected(Bundle connectionHint) {
         try {
             // TODO: Connect to the communication channel as well
-            Cast.CastApi.launchApplication(mApiClient, MenuActivity.APP_ID, false);
+            Cast.CastApi.launchApplication(mApiClient, Constants.CAST_APP_ID, false);
         } catch (Exception e) {
             Log.e(TAG, "Failed to launch application", e);
         }

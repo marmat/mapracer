@@ -24,8 +24,7 @@ public class MenuActivity
         extends ActionBarActivity
         implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
-    public static final String TAG = "mapracer";
-    public static final String APP_ID = "807AB2E8";
+    public static final String TAG = "MenuActivity";
 
     GoogleApiClient mApiClient;
     Cast.Listener mCastClientListener = new Cast.Listener() {
@@ -88,7 +87,7 @@ public class MenuActivity
 
         mMediaRouter = MediaRouter.getInstance(getApplicationContext());
         mMediaRouteSelector = new MediaRouteSelector.Builder()
-                .addControlCategory(CastMediaControlIntent.categoryForCast(APP_ID))
+                .addControlCategory(CastMediaControlIntent.categoryForCast(Constants.CAST_APP_ID))
                 .build();
     }
 
@@ -129,7 +128,7 @@ public class MenuActivity
         try {
             // Just launch the application to get the splash screen,
             // we don't care about interaction just yet
-            Cast.CastApi.launchApplication(mApiClient, APP_ID, false);
+            Cast.CastApi.launchApplication(mApiClient, Constants.CAST_APP_ID, false);
         } catch (Exception e) {
             Log.e(TAG, "Failed to launch application", e);
         }
