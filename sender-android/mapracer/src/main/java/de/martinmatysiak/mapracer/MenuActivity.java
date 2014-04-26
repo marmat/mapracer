@@ -146,7 +146,12 @@ public class MenuActivity
 
     public void onClick(View v) {
         Intent intent = new Intent(this, MapActivity.class);
-        intent.putExtra("device", mSelectedDevice);
+
+        intent.putExtra(Constants.INTENT_DEVICE, mSelectedDevice);
+        intent.putExtra(Constants.INTENT_START_LOCATION, Constants.DEBUG_START_LOCATION);
+        intent.putExtra(Constants.INTENT_TARGET_LOCATION, Constants.DEBUG_TARGET_LOCATION);
+        intent.putExtra(Constants.INTENT_TARGET_TITLE, Constants.DEBUG_TARGET_TITLE);
+
         startActivity(intent);
     }
 

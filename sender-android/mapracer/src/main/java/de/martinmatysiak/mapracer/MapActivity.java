@@ -55,18 +55,18 @@ public class MapActivity
         GoogleMap map = ((MapFragment) getFragmentManager()
                 .findFragmentById(R.id.map)).getMap();
 
-        LatLng sydney = new LatLng(-33.867, 151.206);
+        LatLng start = getIntent().getParcelableExtra(Constants.INTENT_START_LOCATION);
 
-        map.setMyLocationEnabled(true);
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(sydney, 13));
+        map.setMyLocationEnabled(false);
+        map.moveCamera(CameraUpdateFactory.newLatLngZoom(start, 13));
 
         map.addMarker(new MarkerOptions()
-                .title("Sydney")
-                .snippet("The most populous city in Australia.")
-                .position(sydney));
+                .title("Start")
+                .snippet("Ready, Set, Go!")
+                .position(start));
 
         // Reconnect to the cast device and enable communication
-        mSelectedDevice = this.getIntent().getParcelableExtra("device");
+        mSelectedDevice = this.getIntent().getParcelableExtra(Constants.INTENT_DEVICE);
         Log.d(TAG, "Device: " + mSelectedDevice.getDeviceId());
 
         Cast.CastOptions.Builder apiOptionsBuilder = Cast.CastOptions
