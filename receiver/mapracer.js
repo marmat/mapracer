@@ -128,6 +128,11 @@ MapRacer.prototype.onCastMessage = function(message) {
   console.log('Got a message!');
   console.dir(message);
 
+  if (message.data == 'ping') {
+    this.messageBus.send(message.senderId, 'pong');
+    return;
+  }
+
   var payload = JSON.parse(message.data);
   if (payload.type == 'target') {
     var race = {
