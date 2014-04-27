@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        html, body, #view {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        }
+    </style>
+
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
+    <script>
+            function onLoad() {
+                var options = {
+                    disableDefaultUI: true,
+                    clickToGo: false,
+                    linksControl: true,
+                    position: new google.maps.LatLng(37.340393, -121.644142),
+                    pov: {
+                        heading: -65,
+                        pitch: -10
+                    },
+                    zoom: 1
+                };
+
+                var streetView = new google.maps.StreetViewPanorama(
+                    document.getElementById('view'),
+                    options);
+
+                streetView.setVisible(true);
+            }
+
+    </script>
+</head>
+
+<body onload="onLoad()">
+<div id="view"></div>
+</body>
+</html>
