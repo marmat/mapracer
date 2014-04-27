@@ -43,8 +43,10 @@
         <activity
             android:name="de.martinmatysiak.mapracer.MapActivity"
             android:label="@string/title_activity_map"
-            android:parentActivityName="de.martinmatysiak.mapracer.MenuActivity" >
-            <meta-data
+            android:parentActivityName="de.martinmatysiak.mapracer.MenuActivity"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize">
+        <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="MenuActivity" />
         </activity>

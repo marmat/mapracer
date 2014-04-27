@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 
 import com.google.android.gms.cast.Cast;
@@ -73,6 +74,7 @@ public class MapActivity
         WebView streetView = (WebView) findViewById(R.id.streetView);
 
         streetView.getSettings().setJavaScriptEnabled(true);
+        streetView.addJavascriptInterface(this, "AndroidCast");
         streetView.loadUrl("file:///android_asset/index.html");
 
         // Reconnect to the cast device and enable communication
@@ -125,5 +127,10 @@ public class MapActivity
     @Override
     public void onMessageReceived(CastDevice castDevice, String namespace, String message) {
         Log.d(TAG, "onMessageReceived: " + message);
+    }
+
+    @JavascriptInterface
+    public void sendMessage(String message) {
+        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message);
     }
 }

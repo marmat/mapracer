@@ -23,14 +23,27 @@
                         heading: -65,
                         pitch: -10
                     },
+                    visible: true,
                     zoom: 1
                 };
 
-                var streetView = new google.maps.StreetViewPanorama(
+                window.streetView = new google.maps.StreetViewPanorama(
                     document.getElementById('view'),
                     options);
 
-                streetView.setVisible(true);
+                google.maps.event.addListener(streetView, 'position_changed', onPositionChanged);
+            }
+
+            function onPositionChanged() {
+                var position = streetView.getPosition();
+                var payload = {
+                    type: 'position',
+                    location: {lat: position.lat(), lng: position.lng()}
+                };
+
+                if (!!window['AndroidCast']) {
+                    AndroidCast.sendMessage(JSON.stringify(payload));
+                }
             }
 
     </script>
