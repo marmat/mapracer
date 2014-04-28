@@ -75,7 +75,8 @@ public class MapActivity
 
         streetView.getSettings().setJavaScriptEnabled(true);
         streetView.addJavascriptInterface(this, "AndroidCast");
-        streetView.loadUrl("file:///android_asset/index.html");
+        streetView.loadUrl("file:///android_asset/index.html#" +
+                mStartLocation.latitude + "," + mStartLocation.longitude);
 
         // Reconnect to the cast device and enable communication
         Cast.CastOptions.Builder apiOptionsBuilder = Cast.CastOptions
@@ -115,7 +116,6 @@ public class MapActivity
         if (result.getStatus().isSuccess()) {
             try {
                 Cast.CastApi.setMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE, this);
-                Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, "ping");
             } catch (IOException e) {
                 Log.e(TAG, "Exception while creating channel", e);
             }

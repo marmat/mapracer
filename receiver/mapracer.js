@@ -8,6 +8,11 @@
 var NAMESPACE = 'urn:x-cast:de.martinmatysiak.mapracer';
 var MIN_PLAYERS = 1;
 
+var DATA_TYPE = 'type';
+var DATA_START_LOCATION = 'start_location';
+var DATA_TARGET_LOCATION = 'target_location';
+var DATA_TARGET_TITLE = 'target_title';
+
 
 
 /** @constructor */
@@ -125,16 +130,10 @@ MapRacer.prototype.countdown_ = function() {
 
 /** @param {cast.receiver.CastMessageBus.Event} message The incoming message. */
 MapRacer.prototype.onCastMessage = function(message) {
-  console.log('Got a message!');
   console.dir(message);
 
-  if (message.data == 'ping') {
-    this.messageBus.send(message.senderId, 'pong');
-    return;
-  }
-
   var payload = JSON.parse(message.data);
-  switch (payload.type) {
+  switch (payload[DATA_TYPE]) {
     case 'request':
       this.onGameRequest(message.senderId, payload);
       break;
@@ -157,23 +156,52 @@ MapRacer.prototype.onCastMessage = function(message) {
  */
 MapRacer.prototype.onGameRequest = function(senderId, payload) {
 
-  this.race = payload; // TODO process if payload has no locations
-  this.targetEl.innerHTML = payload.title;
-  this.map.setCenter(payload.location);
+  var race = {};
+  race[DATA_TARGET_TITLE] = payload[DATA_TARGET_TITLE] || 'the Finish';
+
+  if (!!payload[DATA_TARGET_LOCATION]) {
+    race[DATA_TARGET_LOCATION] = new google.maps.LatLng(
+        payload[DATA_TARGET_LOCATION].lat,
+        payload[DATA_TARGET_LOCATION].lng);
+  } else {
+    // Pick an interesting location at random
+    // TODO
+  }
+
+  if (!!payload[DATA_START_LOCATION]) {
+    race[DATA_START_LOCATION] = new google.maps.LatLng(
+        payload[DATA_START_LOCATION].lat,
+        payload[DATA_START_LOCATION].lng);
+  } else {
+    // Pick a location somewhat close to the target
+    // TODO
+  }
+
+  this.race = race;
+  this.targetEl.innerHTML = race[DATA_TARGET_TITLE];
+  this.map.setCenter(race[DATA_START_LOCATION]);
+
+  var raceBounds = new google.maps.LatLngBounds();
+  raceBounds.extend(race[DATA_START_LOCATION]);
+  raceBounds.extend(race[DATA_TARGET_LOCATION]);
+  this.map.fitBounds(raceBounds);
+
   new google.maps.Marker({
     map: this.map,
-    position: payload.location,
+    position: race[DATA_TARGET_LOCATION],
     icon: this.targetIcon
   });
 
   // Reposition all players
   for (var playerId in this.players) {
-    this.players[playerId].marker.setPosition(this.race.start_location);
-    this.players[playerId].path.setPath([this.race.start_location]);
+    this.players[playerId].marker.setPosition(race[DATA_START_LOCATION]);
+    this.players[playerId].path.setPath([race[DATA_START_LOCATION]]);
   }
 
+  // Broadcast the game start event (TODO move somewhere else)
   payload.type = 'start';
   this.messageBus.broadcast(JSON.stringify(payload));
+
   this.maybeHideSplashScreen_();
 };
 

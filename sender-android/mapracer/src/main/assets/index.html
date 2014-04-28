@@ -14,15 +14,12 @@
     <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
     <script>
             function onLoad() {
+                var position = window.location.hash.substring(1).split(',');
                 var options = {
                     disableDefaultUI: true,
                     clickToGo: false,
                     linksControl: true,
-                    position: new google.maps.LatLng(37.340393, -121.644142),
-                    pov: {
-                        heading: -65,
-                        pitch: -10
-                    },
+                    position: new google.maps.LatLng(position[0], position[1]),
                     visible: true,
                     zoom: 1
                 };

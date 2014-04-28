@@ -18,8 +18,10 @@ public class Constants {
     public static final String CAST_NAMESPACE = "urn:x-cast:de.martinmatysiak.mapracer";
 
     public static final String DATA_TYPE = "type";
+    public static final String DATA_START_LOCATION = "start_location";
     public static final String DATA_TARGET_LOCATION = "target_location";
     public static final String DATA_TARGET_TITLE = "target_title";
+
     public static final String INTENT_DEVICE = "device";
 
     public static final String GAME_REQUEST = "request";
@@ -27,7 +29,6 @@ public class Constants {
     public static final String GAME_POSITION = "position";
     public static final String GAME_STOP = "stop";
 
-    public static final String DATA_START_LOCATION = "start_location";
 
     public static final LatLng DEBUG_START_LOCATION = new LatLng(37.413084, -122.069217);
     public static final LatLng DEBUG_TARGET_LOCATION = new LatLng(37.420283, -122.083961);
