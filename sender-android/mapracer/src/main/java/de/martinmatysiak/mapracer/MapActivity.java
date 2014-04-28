@@ -64,9 +64,9 @@ public class MapActivity
 
         // Gather game-specific parameters
         Intent intent = getIntent();
-        mStartLocation = intent.getParcelableExtra(Constants.INTENT_START_LOCATION);
-        mTargetLocation = intent.getParcelableExtra(Constants.INTENT_TARGET_LOCATION);
-        mTargetTitle = intent.getStringExtra(Constants.INTENT_TARGET_TITLE);
+        mStartLocation = intent.getParcelableExtra(Constants.DATA_START_LOCATION);
+        mTargetLocation = intent.getParcelableExtra(Constants.DATA_TARGET_LOCATION);
+        mTargetTitle = intent.getStringExtra(Constants.DATA_TARGET_TITLE);
         mSelectedDevice = intent.getParcelableExtra(Constants.INTENT_DEVICE);
         Log.d(TAG, "Device: " + mSelectedDevice.getDeviceId());
 

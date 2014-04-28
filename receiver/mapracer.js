@@ -134,41 +134,62 @@ MapRacer.prototype.onCastMessage = function(message) {
   }
 
   var payload = JSON.parse(message.data);
-  if (payload.type == 'target') {
-    var race = {
-      title: payload.title,
-      end: payload.location
-    };
+  switch (payload.type) {
+    case 'request':
+      this.onGameRequest(message.senderId, payload);
+      break;
+    case 'position':
+      this.onPosition(message.senderId, payload);
+      break;
+    case 'start':
+      // TODO
+      break;
+    case 'stop':
+      // TODO
+      break;
+  }
+};
 
-    this.targetEl.innerHTML = payload.title;
-    this.map.setCenter(payload.location);
-    new google.maps.Marker({
-      map: this.map,
-      position: payload.location,
-      icon: this.targetIcon
-    });
 
-    // Generate a start location not too far away
-    race.start = new google.maps.LatLng(50.761596, 6.137060);
+/**
+ * @param {String} senderId The player's ID.
+ * @param {Object} payload The message payload.
+ */
+MapRacer.prototype.onGameRequest = function(senderId, payload) {
 
-    // Reposition all players
-    for (var playerId in this.players) {
-      this.players[playerId].marker.setPosition(race.start);
-      this.players[playerId].path.setPath([race.start]);
-    }
+  this.race = payload; // TODO process if payload has no locations
+  this.targetEl.innerHTML = payload.title;
+  this.map.setCenter(payload.location);
+  new google.maps.Marker({
+    map: this.map,
+    position: payload.location,
+    icon: this.targetIcon
+  });
 
-    this.race = race;
-    this.maybeHideSplashScreen_();
+  // Reposition all players
+  for (var playerId in this.players) {
+    this.players[playerId].marker.setPosition(this.race.start_location);
+    this.players[playerId].path.setPath([this.race.start_location]);
+  }
 
-  } else if (payload.type == 'position') {
-    var player = this.players[message.senderId];
-    if (!!player) {
-      // Note: the path wants actual g.m.LatLng objects, contrary to most
-      // other methods...
-      player.marker.setPosition(payload.location);
-      player.path.getPath().push(
-          new google.maps.LatLng(payload.location.lat, payload.location.lng));
-    }
+  payload.type = 'start';
+  this.messageBus.broadcast(JSON.stringify(payload));
+  this.maybeHideSplashScreen_();
+};
+
+
+/**
+ * @param {String} senderId The player's ID.
+ * @param {Object} payload The message payload.
+ */
+MapRacer.prototype.onPosition = function(senderId, payload) {
+  var player = this.players[senderId];
+  if (!!player) {
+    // Note: the path wants actual g.m.LatLng objects, contrary to most
+    // other methods...
+    player.marker.setPosition(payload.location);
+    player.path.getPath().push(
+        new google.maps.LatLng(payload.location.lat, payload.location.lng));
   }
 };
 
@@ -181,13 +202,14 @@ MapRacer.prototype.onConnect = function(client) {
   var player = this.receiverManager.getSender(client.data);
   player.marker = new google.maps.Marker({
     map: this.map,
-    position: !!this.race ? this.race.start : {lat: 0, lng: 0},
+    position: !!this.race ? this.race.start_location : {lat: 0, lng: 0},
     icon: this.playerIcon
   });
 
   player.path = new google.maps.Polyline({
     map: this.map,
-    path: [!!this.race ? this.race.start : new google.maps.LatLng(0, 0)],
+    path: [!!this.race ? this.race.start_location :
+          new google.maps.LatLng(0, 0)],
     strokeColor: '#4390F7',
     strokeOpacity: 0.6,
     strokeWeight: 4
