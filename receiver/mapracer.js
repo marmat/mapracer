@@ -28,13 +28,13 @@ MapRacer = function() {
   this.timeEl = document.querySelector('#time');
 
   /** @type {Element} */
+  this.titleEl = document.querySelector('#title');
+
+  /** @type {Element} */
   this.targetEl = document.querySelector('#target');
 
   /** @type {Element} */
   this.splashEl = document.querySelector('#splash');
-
-  /** @type {Element} */
-  this.countdownEl = document.querySelector('#countdown');
 
   /** @type {cast.receiver.CastReceiverManager} */
   this.receiverManager = null;
@@ -106,7 +106,7 @@ MapRacer.prototype.initializeMap_ = function() {
 /** @private */
 MapRacer.prototype.maybeHideSplashScreen_ = function() {
   if (!!this.race && Object.keys(this.players).length >= MIN_PLAYERS) {
-    this.splashEl.style.opacity = '0';
+    this.titleEl.innerHTML = 'Get Ready!';
     this.countdownInterval_ = setInterval(this.countdown_.bind(this), 1000);
   }
 };
@@ -127,7 +127,7 @@ MapRacer.prototype.countdown_ = function() {
     counter.innerHTML = nextCount;
     counter.className = 'counter';
 
-    this.countdownEl.appendChild(counter);
+    this.splashEl.appendChild(counter);
     setTimeout(function() {
       counter.style.fontSize = '220px';
       counter.style.opacity = '0';
@@ -141,7 +141,7 @@ MapRacer.prototype.countdown_ = function() {
 
 /** @private */
 MapRacer.prototype.startRace_ = function() {
-  this.countdownEl.style.display = 'none';
+  this.splashEl.style.opacity = '0';
   this.race[DATA_START_TIME] = Date.now();
   this.race[DATA_ACTIVE] = true;
 
