@@ -7,8 +7,11 @@
 /** @const */
 var NAMESPACE = 'urn:x-cast:de.martinmatysiak.mapracer';
 var MIN_PLAYERS = 1;
+var COUNTDOWN_DURATION = 5;
 
 var DATA_TYPE = 'type';
+var DATA_ACTIVE = 'active';
+var DATA_START_TIME = 'start_time';
 var DATA_START_LOCATION = 'start_location';
 var DATA_TARGET_LOCATION = 'target_location';
 var DATA_TARGET_TITLE = 'target_title';
@@ -104,27 +107,58 @@ MapRacer.prototype.initializeMap_ = function() {
 MapRacer.prototype.maybeHideSplashScreen_ = function() {
   if (!!this.race && Object.keys(this.players).length >= MIN_PLAYERS) {
     this.splashEl.style.opacity = '0';
-    setInterval(this.countdown_.bind(this), 1000);
+    this.countdownInterval_ = setInterval(this.countdown_.bind(this), 1000);
   }
 };
 
 
 /** @private */
 MapRacer.prototype.countdown_ = function() {
+  var nextCount = COUNTDOWN_DURATION;
+
   var old = document.querySelector('.counter');
   if (!!old) {
+    nextCount = old.innerHTML - 1;
     old.parentNode.removeChild(old);
   }
 
-  var counter = document.createElement('span');
-  counter.innerHTML = '5';
-  counter.className = 'counter';
+  if (nextCount > 0) {
+    var counter = document.createElement('span');
+    counter.innerHTML = nextCount;
+    counter.className = 'counter';
 
-  this.countdownEl.appendChild(counter);
-  setTimeout(function() {
-    counter.style.fontSize = '220px';
-    counter.style.opacity = '0';
-  }, 10);
+    this.countdownEl.appendChild(counter);
+    setTimeout(function() {
+      counter.style.fontSize = '220px';
+      counter.style.opacity = '0';
+    }, 10);
+  } else {
+    this.startRace_();
+    clearInterval(this.countdownInterval_);
+  }
+};
+
+
+/** @private */
+MapRacer.prototype.startRace_ = function() {
+  this.countdownEl.style.display = 'none';
+  this.race[DATA_START_TIME] = Date.now();
+  this.race[DATA_ACTIVE] = true;
+
+  setInterval(this.updateTimer.bind(this), 10);
+};
+
+
+/** Updates the visible UI timer */
+MapRacer.prototype.updateTimer = function() {
+  var difference = Date.now() - this.race[DATA_START_TIME];
+  var seconds = Math.floor((difference / 1000) % 60);
+
+  var formatted = Math.floor(difference / 60000) + // minutes
+      (seconds < 10 ? ':0' : ':') + seconds + // seconds
+      '.' + difference % 1000; // milliseconds
+
+  this.timeEl.innerHTML = formatted;
 };
 
 

@@ -63,9 +63,10 @@
     function onTransmitClick(e) {
       console.log('Sending target to Chromecast');
       var payload = {
-        type: 'target',
-        title: document.querySelector('#title').value,
-        location: targetLatLng,
+        type: 'request',
+        target_title: document.querySelector('#title').value,
+        target_location: targetLatLng,
+        start_location: targetLatLng
       }
 
       session.sendMessage(NAMESPACE, payload,
