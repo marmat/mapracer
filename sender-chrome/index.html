@@ -29,12 +29,15 @@
       window.map = new google.maps.Map(document.getElementById('map'),
         {
           zoom: 14,
-          center: new google.maps.LatLng(50.7658, 6.1059),
+          center: new google.maps.LatLng(37.413084, -122.069217),
           mapTypeId: google.maps.MapTypeId.ROADMAP,
         });
 
       google.maps.event.addListener(window.map, 'click', onMapsClick);
-      document.querySelector('#pick').onclick = onPickClick;
+      var pickers = document.querySelectorAll('.location_pick');
+      for (var i = 0; i < pickers.length; i++) {
+        pickers[i].onclick = onPickClick;
+      }
       document.querySelector('#transmit').onclick = onTransmitClick;
     }
 
@@ -57,16 +60,30 @@
     }
 
     function onPickClick(e) {
-      clickTarget = document.querySelector("#location");
+      var targetId = e.target.id.substring(5);
+      clickTarget = document.getElementById(targetId);
     }
 
     function onTransmitClick(e) {
       console.log('Sending target to Chromecast');
+
       var payload = {
-        type: 'request',
-        target_title: document.querySelector('#title').value,
-        target_location: targetLatLng,
-        start_location: targetLatLng
+        type: 'request'
+      };
+
+      var title = document.querySelector('#target_title').value;
+      var start = document.querySelector('#start_location').value;
+      var target = document.querySelector('#target_location').value;
+
+      if (start != '') {
+        var startChunks = start.split(',');
+        payload.start_location = {lat: startChunks[0], lng: startChunks[1]};
+      }
+
+      if (title != '' && target != '') {
+        var targetChunks = target.split(',');
+        payload.target_title = title;
+        payload.target_location = {lat: targetChunks[0], lng: targetChunks[1]};
       }
 
       session.sendMessage(NAMESPACE, payload,
@@ -107,13 +124,16 @@
 <body>
   <h1>Hello, Chrome!</h1>
 
-  Create a new target:
-  <input id="title" placeholder="Target..." />
-  <input id="location" placeholder="Latitude, Longitude" />
-  <button id="pick" type="button">Pick</button>
-  <button id="transmit" type="button">Transmit</button>
+  <h2>Send position update:</h2>
   <div id="map" style="height:300px; width:500px"></div>
 
+  <h2>Create a game request:</h2>
+  <input id="start_location" size="60" placeholder="Start [lat, lng]" />
+  <button id="pick_start_location" class="location_pick" type="button">Pick on Map</button><br>
+  <input id="target_title" size="60" placeholder="Target..." /><br>
+  <input id="target_location" size="60" placeholder="Target [lat, lng]" />
+  <button id="pick_target_location" class="location_pick" type="button">Pick on Map</button><br>
+  <button id="transmit" type="button">Transmit</button>
 
   <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
 </body>
