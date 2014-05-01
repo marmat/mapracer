@@ -16,6 +16,13 @@ var DATA_START_LOCATION = 'start_location';
 var DATA_TARGET_LOCATION = 'target_location';
 var DATA_TARGET_TITLE = 'target_title';
 
+var GameState = {
+  INIT: 'init',
+  LOAD: 'load',
+  RACE: 'race',
+  SCORES: 'scores'
+};
+
 
 
 /** @constructor */
@@ -45,6 +52,9 @@ MapRacer = function() {
   /** @type {google.maps.Map} */
   this.map = null;
 
+  /** @type {google.maps.StreetViewService} */
+  this.streetViewService = null;
+
   /** @type {google.maps.Icon} */
   this.targetIcon = {
     url: 'target.png',
@@ -62,6 +72,9 @@ MapRacer = function() {
   /** @type {Object.<string, *>} */
   this.race = null;
 
+  /** @type {GameState} */
+  this.state = GameState.INIT;
+
   /**
    * Map from Sender ID to the Sender object containing all connected devices.
    * @type {Object.<string, cast.receiver.system.Sender>}
@@ -70,7 +83,6 @@ MapRacer = function() {
 
   this.initializeCast_();
   this.initializeMap_();
-  this.maybeHideSplashScreen_();
 };
 
 
@@ -100,15 +112,78 @@ MapRacer.prototype.initializeMap_ = function() {
   };
 
   this.map = new google.maps.Map(this.mapEl, mapOptions);
+  this.streetViewService = new google.maps.StreetViewService();
+};
+
+
+/** @param {GameState} state The new state to show. */
+MapRacer.prototype.setUiState = function(state) {
+  this.state = state;
+  switch (state) {
+    case GameState.INIT:
+      this.splashEl.style.opacity = 1;
+      this.titleEl.style.display = 'inline';
+      this.titleEl.innerHTML = 'MapRacer';
+      break;
+    case GameState.LOAD:
+      this.countdownInterval_ = setInterval(this.countdown_.bind(this), 1000);
+      this.titleEl.innerHTML = 'Get Ready!';
+      break;
+    case GameState.RACE:
+      clearInterval(this.countdownInterval_);
+      this.splashEl.style.opacity = '0';
+      this.race[DATA_START_TIME] = Date.now();
+      this.race[DATA_ACTIVE] = true;
+      this.timerInterval_ = setInterval(this.updateTimer.bind(this), 10);
+      break;
+    case GameState.SCORES:
+      clearInterval(this.timerInterval_);
+      break;
+  }
 };
 
 
 /** @private */
-MapRacer.prototype.maybeHideSplashScreen_ = function() {
-  if (!!this.race && Object.keys(this.players).length >= MIN_PLAYERS) {
-    this.titleEl.innerHTML = 'Get Ready!';
-    this.countdownInterval_ = setInterval(this.countdown_.bind(this), 1000);
+MapRacer.prototype.maybeStartRace_ = function() {
+  if (!this.race ||
+      !this.race[DATA_START_LOCATION] ||
+      !this.race[DATA_TARGET_LOCATION] ||
+      Object.keys(this.players).length < MIN_PLAYERS) {
+    // we are not ready yet
+    return;
   }
+
+  this.targetEl.innerHTML = this.race[DATA_TARGET_TITLE];
+  this.map.setCenter(this.race[DATA_START_LOCATION]);
+
+  var raceBounds = new google.maps.LatLngBounds();
+  raceBounds.extend(this.race[DATA_START_LOCATION]);
+  raceBounds.extend(this.race[DATA_TARGET_LOCATION]);
+  this.map.fitBounds(raceBounds);
+
+  new google.maps.Marker({
+    map: this.map,
+    position: this.race[DATA_TARGET_LOCATION],
+    icon: this.targetIcon
+  });
+
+  // Reposition all players
+  for (var playerId in this.players) {
+    this.players[playerId].marker.setPosition(this.race[DATA_START_LOCATION]);
+    this.players[playerId].path.setPath([this.race[DATA_START_LOCATION]]);
+  }
+
+  // Broadcast the game start event (TODO move somewhere else)
+  var payload = {
+    type: 'start'
+  };
+
+  payload[DATA_TARGET_LOCATION] = this.race[DATA_TARGET_LOCATION];
+  payload[DATA_TARGET_TITLE] = this.race[DATA_TARGET_TITLE];
+  payload[DATA_START_LOCATION] = this.race[DATA_START_LOCATION];
+
+  this.messageBus.broadcast(JSON.stringify(payload));
+  this.setUiState(GameState.LOAD);
 };
 
 
@@ -133,19 +208,8 @@ MapRacer.prototype.countdown_ = function() {
       counter.style.opacity = '0';
     }, 10);
   } else {
-    this.startRace_();
-    clearInterval(this.countdownInterval_);
+    this.setUiState(GameState.RACE);
   }
-};
-
-
-/** @private */
-MapRacer.prototype.startRace_ = function() {
-  this.splashEl.style.opacity = '0';
-  this.race[DATA_START_TIME] = Date.now();
-  this.race[DATA_ACTIVE] = true;
-
-  setInterval(this.updateTimer.bind(this), 10);
 };
 
 
@@ -159,6 +223,24 @@ MapRacer.prototype.updateTimer = function() {
       '.' + difference % 1000; // milliseconds
 
   this.timeEl.innerHTML = formatted;
+};
+
+
+/**
+ * Callback for the StreetViewService.
+ * @param {string} id The type of location that was requested.
+ * @param {StreetViewPanoramaData} panorama The closest panorama, if any.
+ * @param {StreetViewStatus} status The status returned by StreetViewService.
+ */
+MapRacer.prototype.onStreetViewLocation = function(id, panorama, status) {
+  if (status == google.maps.StreetViewStatus.OK) {
+    this.race[id] = panorama.location.latLng;
+  } else {
+    this.titleEl.innerHTML = 'Warning: StreetView not available in the ' +
+        'desired game area. Please try a different location.';
+  }
+
+  this.maybeStartRace_();
 };
 
 
@@ -190,53 +272,36 @@ MapRacer.prototype.onCastMessage = function(message) {
  */
 MapRacer.prototype.onGameRequest = function(senderId, payload) {
 
-  var race = {};
-  race[DATA_TARGET_TITLE] = payload[DATA_TARGET_TITLE] || 'the Finish';
+  this.race = {};
+  this.race[DATA_TARGET_TITLE] = payload[DATA_TARGET_TITLE] || 'the finish';
 
+  var targetLocation = null;
   if (!!payload[DATA_TARGET_LOCATION]) {
-    race[DATA_TARGET_LOCATION] = new google.maps.LatLng(
+    targetLocation = new google.maps.LatLng(
         payload[DATA_TARGET_LOCATION].lat,
         payload[DATA_TARGET_LOCATION].lng);
   } else {
     // Pick an interesting location at random
     // TODO
+    targetLocation = new google.maps.LatLng(0, 0);
   }
 
+  this.streetViewService.getPanoramaByLocation(targetLocation, 50,
+      this.onStreetViewLocation.bind(this, DATA_TARGET_LOCATION));
+
+  var startLocation = null;
   if (!!payload[DATA_START_LOCATION]) {
-    race[DATA_START_LOCATION] = new google.maps.LatLng(
+    startLocation = new google.maps.LatLng(
         payload[DATA_START_LOCATION].lat,
         payload[DATA_START_LOCATION].lng);
   } else {
     // Pick a location somewhat close to the target
     // TODO
+    startLocation = new google.maps.LatLng(0, 0);
   }
 
-  this.race = race;
-  this.targetEl.innerHTML = race[DATA_TARGET_TITLE];
-  this.map.setCenter(race[DATA_START_LOCATION]);
-
-  var raceBounds = new google.maps.LatLngBounds();
-  raceBounds.extend(race[DATA_START_LOCATION]);
-  raceBounds.extend(race[DATA_TARGET_LOCATION]);
-  this.map.fitBounds(raceBounds);
-
-  new google.maps.Marker({
-    map: this.map,
-    position: race[DATA_TARGET_LOCATION],
-    icon: this.targetIcon
-  });
-
-  // Reposition all players
-  for (var playerId in this.players) {
-    this.players[playerId].marker.setPosition(race[DATA_START_LOCATION]);
-    this.players[playerId].path.setPath([race[DATA_START_LOCATION]]);
-  }
-
-  // Broadcast the game start event (TODO move somewhere else)
-  payload.type = 'start';
-  this.messageBus.broadcast(JSON.stringify(payload));
-
-  this.maybeHideSplashScreen_();
+  this.streetViewService.getPanoramaByLocation(startLocation, 50,
+      this.onStreetViewLocation.bind(this, DATA_START_LOCATION));
 };
 
 
@@ -278,7 +343,7 @@ MapRacer.prototype.onConnect = function(client) {
   });
 
   this.players[client.data] = player;
-  this.maybeHideSplashScreen_();
+  this.maybeStartRace_();
 };
 
 
