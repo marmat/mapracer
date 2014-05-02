@@ -30,13 +30,36 @@
         android:visibility="invisible"
         android:onClick="onClick" />
 
-    <Button
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Custom Race"
-        android:id="@+id/button_custom"
-        android:layout_below="@+id/button_quick"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="Connected Players:"
+        android:id="@+id/label_player_count"
+        android:layout_above="@+id/player_count"
+        android:visibility="invisible"
+        android:layout_centerHorizontal="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="1"
+        android:id="@+id/player_count"
+        android:textSize="32pt"
+        android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:visibility="invisible"
-        android:onClick="onClick" />
+        android:layout_marginBottom="64dp" />
+
+    <!--<Button-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:text="Custom Race"-->
+        <!--android:id="@+id/button_custom"-->
+        <!--android:layout_below="@+id/button_quick"-->
+        <!--android:layout_centerHorizontal="true"-->
+        <!--android:visibility="invisible"-->
+        <!--android:onClick="onClick" />-->
+
 </RelativeLayout>

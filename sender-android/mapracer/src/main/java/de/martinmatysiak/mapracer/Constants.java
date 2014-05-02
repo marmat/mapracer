@@ -28,7 +28,7 @@ public class Constants {
     public static final String GAME_START = "start";
     public static final String GAME_POSITION = "position";
     public static final String GAME_STOP = "stop";
-
+    public static final String GAME_PLAYER_COUNT = "player_count";
 
     public static final LatLng DEBUG_START_LOCATION = new LatLng(37.413084, -122.069217);
     public static final LatLng DEBUG_TARGET_LOCATION = new LatLng(37.420283, -122.083961);

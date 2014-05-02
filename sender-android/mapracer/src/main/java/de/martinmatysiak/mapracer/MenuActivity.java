@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
 
 import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
@@ -181,8 +182,10 @@ public class MenuActivity
         int buttons = mSelectedDevice != null ? View.VISIBLE : View.INVISIBLE;
         int text = mSelectedDevice != null ? View.INVISIBLE : View.VISIBLE;
 
-        this.findViewById(R.id.button_custom).setVisibility(buttons);
+        //this.findViewById(R.id.button_custom).setVisibility(buttons);
         this.findViewById(R.id.button_quick).setVisibility(buttons);
+        this.findViewById(R.id.label_player_count).setVisibility(buttons);
+        this.findViewById(R.id.player_count).setVisibility(buttons);
         this.findViewById(R.id.text_cast).setVisibility(text);
     }
 
@@ -205,8 +208,13 @@ public class MenuActivity
 
         try {
             JSONObject payload = new JSONObject(message);
-            if (payload.has(Constants.DATA_TYPE) &&
-                    payload.getString(Constants.DATA_TYPE).equals(Constants.GAME_START)) {
+            if (!payload.has(Constants.DATA_TYPE)) {
+                return;
+            }
+
+            String messageType = payload.getString(Constants.DATA_TYPE);
+
+            if (messageType.equals(Constants.GAME_START)) {
                 Intent intent = new Intent(this, MapActivity.class);
                 intent.putExtra(Constants.INTENT_DEVICE, mSelectedDevice);
                 intent.putExtra(Constants.DATA_START_LOCATION,
@@ -216,6 +224,9 @@ public class MenuActivity
                 intent.putExtra(Constants.DATA_TARGET_TITLE,
                         payload.getString(Constants.DATA_TARGET_TITLE));
                 startActivity(intent);
+            } else if (messageType.equals(Constants.GAME_PLAYER_COUNT)) {
+                int count = payload.getInt("count");
+                ((TextView) findViewById(R.id.player_count)).setText(Integer.toString(count));
             }
 
         } catch (JSONException e) {

@@ -23,6 +23,14 @@ var GameState = {
   SCORES: 'scores'
 };
 
+var MessageType = {
+  REQUEST: 'request',
+  START: 'start',
+  POSITION: 'position',
+  STOP: 'stop',
+  PLAYER_COUNT: 'player_count'
+};
+
 
 
 /** @constructor */
@@ -237,6 +245,17 @@ MapRacer.prototype.updateTimer = function() {
 };
 
 
+/** @private */
+MapRacer.prototype.sendPlayerCount_ = function() {
+  var payload = {
+    type: MessageType.PLAYER_COUNT,
+    count: Object.keys(this.players).length
+  };
+
+  this.messageBus.broadcast(JSON.stringify(payload));
+};
+
+
 /**
  * Callback for the StreetViewService.
  * @param {string} id The type of location that was requested.
@@ -354,6 +373,7 @@ MapRacer.prototype.onConnect = function(client) {
   });
 
   this.players[client.data] = player;
+  this.sendPlayerCount_();
   this.maybeStartRace_();
 };
 
@@ -366,4 +386,6 @@ MapRacer.prototype.onDisconnect = function(client) {
   this.players[client.data].marker.setMap(null);
   this.players[client.data].path.setMap(null);
   delete this.players[client.data];
+
+  this.sendPlayerCount_();
 };
