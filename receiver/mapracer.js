@@ -178,12 +178,23 @@ MapRacer.prototype.maybeStartRace_ = function() {
     type: 'start'
   };
 
-  payload[DATA_TARGET_LOCATION] = this.race[DATA_TARGET_LOCATION];
+  payload[DATA_TARGET_LOCATION] = this.convertLatLng(
+      this.race[DATA_TARGET_LOCATION]);
+  payload[DATA_START_LOCATION] = this.convertLatLng(
+      this.race[DATA_START_LOCATION]);
   payload[DATA_TARGET_TITLE] = this.race[DATA_TARGET_TITLE];
-  payload[DATA_START_LOCATION] = this.race[DATA_START_LOCATION];
 
   this.messageBus.broadcast(JSON.stringify(payload));
   this.setUiState(GameState.LOAD);
+};
+
+
+/**
+ * @param {google.maps.LatLng} latLng The LatLng object to convert.
+ * @return {Object} A better serializible object.
+ */
+MapRacer.prototype.convertLatLng = function(latLng) {
+  return {lat: latLng.lat(), lng: latLng.lng()};
 };
 
 
