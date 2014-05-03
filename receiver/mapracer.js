@@ -8,6 +8,7 @@
 var NAMESPACE = 'urn:x-cast:de.martinmatysiak.mapracer';
 var MIN_PLAYERS = 1;
 var COUNTDOWN_DURATION = 5;
+var WIN_DISTANCE_THRESHOLD = 50; // in meters
 
 var DATA_TYPE = 'type';
 var DATA_ACTIVE = 'active';
@@ -29,6 +30,13 @@ var MessageType = {
   POSITION: 'position',
   STOP: 'stop',
   PLAYER_COUNT: 'player_count'
+};
+
+var PlayerStatus = {
+  READY: 'ready',
+  ACTIVE: 'active',
+  WAITING: 'waiting',
+  FINISHED: 'finished'
 };
 
 
@@ -73,6 +81,13 @@ MapRacer = function() {
   /** @type {google.maps.Icon} */
   this.playerIcon = {
     url: 'player.png',
+    size: new google.maps.Size(24, 24),
+    anchor: new google.maps.Point(12, 12)
+  };
+
+  /** @type {google.maps.Icon} */
+  this.playerFinishedIcon = {
+    url: 'playerFinished.png',
     size: new google.maps.Size(24, 24),
     anchor: new google.maps.Point(12, 12)
   };
@@ -161,6 +176,11 @@ MapRacer.prototype.maybeStartRace_ = function() {
     return;
   }
 
+  if (this.state != GameState.INIT) {
+    // we have already started
+    return;
+  }
+
   this.targetEl.innerHTML = this.race[DATA_TARGET_TITLE];
   this.map.setCenter(this.race[DATA_START_LOCATION]);
 
@@ -175,15 +195,17 @@ MapRacer.prototype.maybeStartRace_ = function() {
     icon: this.targetIcon
   });
 
-  // Reposition all players
+  // Reset all players
   for (var playerId in this.players) {
-    this.players[playerId].marker.setPosition(this.race[DATA_START_LOCATION]);
-    this.players[playerId].path.setPath([this.race[DATA_START_LOCATION]]);
+    var player = this.players[playerId];
+    player.marker.setPosition(this.race[DATA_START_LOCATION]);
+    player.path.setPath([this.race[DATA_START_LOCATION]]);
+    player.status = PlayerStatus.ACTIVE;
   }
 
   // Broadcast the game start event (TODO move somewhere else)
   var payload = {
-    type: 'start'
+    type: MessageType.START
   };
 
   payload[DATA_TARGET_LOCATION] = this.convertLatLng(
@@ -245,6 +267,40 @@ MapRacer.prototype.updateTimer = function() {
 };
 
 
+/**
+ * Checks if the player has won the game etc.
+ * @param {String} playerId The player to check.
+ * @param {google.maps.LatLng} location The player's new location.
+ * @private
+ */
+MapRacer.prototype.updatePlayerStatus_ = function(playerId, location) {
+  var player = this.players[playerId];
+
+  if (!player) {
+    console.log('UpdatePlayerStatus: Player not found ' + playerId);
+    return;
+  }
+
+  if (player.status == PlayerStatus.ACTIVE) {
+    player.marker.setPosition(location);
+    player.path.getPath().push(location);
+
+    var distanceToFinish =
+        google.maps.geometry.spherical.computeDistanceBetween(
+        location, this.race[DATA_TARGET_LOCATION]);
+
+    if (distanceToFinish < WIN_DISTANCE_THRESHOLD) {
+      console.log('Player has finished! (' + playerId + ')');
+      player.status = PlayerStatus.FINISHED;
+      player.time = Date.now() - this.race[DATA_START_TIME];
+      player.marker.setIcon(this.playerFinishedIcon);
+      // TODO(marmat): Send message to client
+      // TODO(marmat): Update leaderboard
+    }
+  }
+};
+
+
 /** @private */
 MapRacer.prototype.sendPlayerCount_ = function() {
   var payload = {
@@ -280,17 +336,11 @@ MapRacer.prototype.onCastMessage = function(message) {
 
   var payload = JSON.parse(message.data);
   switch (payload[DATA_TYPE]) {
-    case 'request':
+    case MessageType.REQUEST:
       this.onGameRequest(message.senderId, payload);
       break;
-    case 'position':
+    case MessageType.POSITION:
       this.onPosition(message.senderId, payload);
-      break;
-    case 'start':
-      // TODO
-      break;
-    case 'stop':
-      // TODO
       break;
   }
 };
@@ -340,14 +390,10 @@ MapRacer.prototype.onGameRequest = function(senderId, payload) {
  * @param {Object} payload The message payload.
  */
 MapRacer.prototype.onPosition = function(senderId, payload) {
-  var player = this.players[senderId];
-  if (!!player) {
-    // Note: the path wants actual g.m.LatLng objects, contrary to most
-    // other methods...
-    player.marker.setPosition(payload.location);
-    player.path.getPath().push(
-        new google.maps.LatLng(payload.location.lat, payload.location.lng));
-  }
+  var playerLocation = new google.maps.LatLng(payload.location.lat,
+      payload.location.lng);
+
+  this.updatePlayerStatus_(senderId, playerLocation);
 };
 
 
@@ -371,6 +417,10 @@ MapRacer.prototype.onConnect = function(client) {
     strokeOpacity: 0.6,
     strokeWeight: 4
   });
+
+  // TODO(marmat): Notify player if race has already started.
+  player.status = this.state == GameState.RACE ?
+      PlayerStatus.WAITING : PlayerStatus.READY;
 
   this.players[client.data] = player;
   this.sendPlayerCount_();
