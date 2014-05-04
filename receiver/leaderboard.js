@@ -62,3 +62,18 @@ Leaderboard.prototype.update = function(id, sortValue) {
     this.container_.appendChild(element);
   }
 };
+
+
+/**
+ * Removes a player from the list.
+ * @param {String} id The player's ID.
+ */
+Leaderboard.prototype.remove = function(id) {
+  var element = this.entries[id];
+  if (!element) {
+    return; // does not exist
+  }
+
+  element.parentNode.removeChild(element);
+  delete this.entries[id];
+};
