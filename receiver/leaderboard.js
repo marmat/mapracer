@@ -18,18 +18,19 @@ Leaderboard = function(container) {
 /**
  * Adds a new player to the leaderboard.
  * @param {String} id The player's ID.
- * @param {String} displayName The name to show in the UI.
- * @param {number} sortValue The value after which items will be sorted.
+ * @param {String=} opt_displayName The name to show in the UI. If not set, the
+ *     ID will be used as displayName.
+ * @param {number=} opt_sortValue The value after which items will be sorted.
  */
-Leaderboard.prototype.add = function(id, displayName, sortValue) {
+Leaderboard.prototype.add = function(id, opt_displayName, opt_sortValue) {
   if (id in this.entries) {
     return; // duplicate
   }
 
   var element = document.createElement('li');
-  element.innerHTML = displayName;
+  element.innerHTML = opt_displayName || id;
   this.entries[id] = element;
-  this.update(id, sortValue);
+  this.update(id, opt_sortValue || Infinity);
 };
 
 

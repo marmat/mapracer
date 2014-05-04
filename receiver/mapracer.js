@@ -292,11 +292,14 @@ MapRacer.prototype.updatePlayerStatus_ = function(playerId, location) {
         google.maps.geometry.spherical.computeDistanceBetween(
         location, this.race[DATA_TARGET_LOCATION]);
 
+    this.leaderboard.update(playerId, distanceToFinish);
+
     if (distanceToFinish < WIN_DISTANCE_THRESHOLD) {
       console.log('Player has finished! (' + playerId + ')');
       player.status = PlayerStatus.FINISHED;
       player.time = Date.now() - this.race[DATA_START_TIME];
       player.marker.setIcon(this.playerFinishedIcon);
+      this.leaderboard.update(playerId, 0);
       // TODO(marmat): Send message to client
       // TODO(marmat): Update leaderboard
     }
@@ -426,6 +429,7 @@ MapRacer.prototype.onConnect = function(client) {
       PlayerStatus.WAITING : PlayerStatus.READY;
 
   this.players[client.data] = player;
+  this.leaderboard.add(client.data);
   this.sendPlayerCount_();
   this.maybeStartRace_();
 };
@@ -436,6 +440,7 @@ MapRacer.prototype.onDisconnect = function(client) {
   console.log('Client disconnected!');
   console.dir(client);
 
+  this.leaderboard.remove(client.data);
   this.players[client.data].marker.setMap(null);
   this.players[client.data].path.setMap(null);
   delete this.players[client.data];
