@@ -59,6 +59,9 @@ MapRacer = function() {
   /** @type {Element} */
   this.splashEl = document.querySelector('#splash');
 
+  /** @type {Leaderboard} */
+  this.leaderboard = new Leaderboard(document.querySelector('#leaderboard'));
+
   /** @type {cast.receiver.CastReceiverManager} */
   this.receiverManager = null;
 

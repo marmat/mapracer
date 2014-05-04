@@ -4,6 +4,7 @@
   <title>MapRacer</title>
   <script src="//www.gstatic.com/cast/sdk/libs/receiver/2.0.0/cast_receiver.js"></script>
   <script src="//maps.googleapis.com/maps/api/js?v=3.exp&amp;libraries=geometry&amp;sensor=false"></script>
+  <script src="leaderboard.js"></script>
   <script src="mapracer.js"></script>
   <style>
     body {
@@ -23,15 +24,20 @@
 
     #infobar {
       background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, #000 100%);
-      bottom: 0;
       box-sizing: border-box;
       color: white;
-      text-shadow: 1px 1px 0px #000;
+      bottom: 0;
       height: 30%;
       left: 0;
       padding: 40px;
       position:fixed;
+      text-shadow: 1px 1px 0px #000;
       width: 100%;
+    }
+
+    #leaderboard {
+      float: right;
+      text-shadow: none;
     }
 
     #splash {
@@ -75,6 +81,7 @@
 <body>
   <div id="map"></div>
   <div id="infobar">
+    <ol id="leaderboard"></ol>
     <h2>Race to <span id="target">$TARGET_NAME_HERE</span></h2>
     <span id="time">0:00.000</span>
   </div>
