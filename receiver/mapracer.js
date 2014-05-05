@@ -118,7 +118,8 @@ MapRacer.prototype.initializeCast_ = function() {
   this.receiverManager.onSenderConnected = this.onConnect.bind(this);
   this.receiverManager.onSenderDisconnected = this.onDisconnect.bind(this);
 
-  this.messageBus = this.receiverManager.getCastMessageBus(NAMESPACE);
+  this.messageBus = this.receiverManager.getCastMessageBus(NAMESPACE,
+      cast.receiver.CastMessageBus.MessageType.JSON);
   this.messageBus.onMessage = this.onCastMessage.bind(this);
 
   this.receiverManager.start();
@@ -217,7 +218,7 @@ MapRacer.prototype.maybeStartRace_ = function() {
       this.race[DATA_START_LOCATION]);
   payload[DATA_TARGET_TITLE] = this.race[DATA_TARGET_TITLE];
 
-  this.messageBus.broadcast(JSON.stringify(payload));
+  this.messageBus.broadcast(payload);
   this.setUiState(GameState.LOAD);
 };
 
@@ -314,7 +315,7 @@ MapRacer.prototype.sendPlayerCount_ = function() {
     count: Object.keys(this.players).length
   };
 
-  this.messageBus.broadcast(JSON.stringify(payload));
+  this.messageBus.broadcast(payload);
 };
 
 
@@ -340,13 +341,12 @@ MapRacer.prototype.onStreetViewLocation = function(id, panorama, status) {
 MapRacer.prototype.onCastMessage = function(message) {
   console.dir(message);
 
-  var payload = JSON.parse(message.data);
-  switch (payload[DATA_TYPE]) {
+  switch (message.data[DATA_TYPE]) {
     case MessageType.REQUEST:
-      this.onGameRequest(message.senderId, payload);
+      this.onGameRequest(message.senderId, message.data);
       break;
     case MessageType.POSITION:
-      this.onPosition(message.senderId, payload);
+      this.onPosition(message.senderId, message.data);
       break;
   }
 };
