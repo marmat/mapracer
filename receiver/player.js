@@ -82,7 +82,7 @@ Player.prototype.setState = function(state) {
       this.marker.setVisible(false);
       break;
     case PlayerState.ACTIVE:
-      this.game.leaderboard.add(this.id, this.name, Infinity);
+      this.game.leaderboard.add(this.id, this.name, Infinity, this.colorLight);
       this.marker.setVisible(true);
       var icon = this.marker.getIcon();
       icon.fillColor = this.colorRegular;
