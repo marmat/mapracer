@@ -45,20 +45,6 @@ MapRacer = function() {
     anchor: new google.maps.Point(9, 43)
   };
 
-  /** @type {google.maps.Icon} */
-  this.playerIcon = {
-    url: 'player.png',
-    size: new google.maps.Size(24, 24),
-    anchor: new google.maps.Point(12, 12)
-  };
-
-  /** @type {google.maps.Icon} */
-  this.playerFinishedIcon = {
-    url: 'playerFinished.png',
-    size: new google.maps.Size(24, 24),
-    anchor: new google.maps.Point(12, 12)
-  };
-
   /** @type {Object.<string, *>} */
   this.race = null;
 

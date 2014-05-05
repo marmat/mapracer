@@ -9,16 +9,30 @@ Player = function(id, game) {
   this.name = 'Player ' + static_playerNumber++;
   this.state = null;
 
+  /** Determine the player's individual color */
+  this.hue = Math.round(Math.random() * 360);
+  this.colorDark = 'hsl(' + this.hue + ', 80%, 25%)';
+  this.colorRegular = 'hsl(' + this.hue + ', 80%, 45%)';
+  this.colorLight = 'hsl(' + this.hue + ', 80%, 65%)';
+
   this.marker = new google.maps.Marker({
     map: this.game.map,
     position: {lat: 0, lng: 0},
-    icon: this.game.playerIcon
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      fillColor: this.colorRegular,
+      fillOpacity: 1,
+      scale: 8,
+      strokeColor: this.colorDark,
+      strokeOpacity: 1,
+      strokeWeight: 2
+    }
   });
 
   this.path = new google.maps.Polyline({
     map: this.game.map,
     path: [new google.maps.LatLng(0, 0)],
-    strokeColor: '#4390F7',
+    strokeColor: this.colorRegular,
     strokeOpacity: 0.6,
     strokeWeight: 4
   });
@@ -70,10 +84,19 @@ Player.prototype.setState = function(state) {
     case PlayerState.ACTIVE:
       this.game.leaderboard.add(this.id, this.name, Infinity);
       this.marker.setVisible(true);
+      var icon = this.marker.getIcon();
+      icon.fillColor = this.colorRegular;
+      icon.strokeWeight = 2;
+      icon.strokeColor = this.colorDark;
+      this.marker.setIcon(icon);
       break;
     case PlayerState.FINISHED:
       this.time = Date.now() - this.game.race[DATA_START_TIME];
-      this.marker.setIcon(this.game.playerFinishedIcon);
+      var icon = this.marker.getIcon();
+      icon.fillColor = this.colorLight;
+      icon.strokeWeight = 4;
+      icon.strokeColor = this.colorRegular;
+      this.marker.setIcon(icon);
       this.game.leaderboard.update(this.id, -1 / this.time);
       this.game.maybeFinishRace();
       break;
