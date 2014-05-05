@@ -4,42 +4,6 @@
  */
 
 
-/** @const */
-var NAMESPACE = 'urn:x-cast:de.martinmatysiak.mapracer';
-var MIN_PLAYERS = 1;
-var COUNTDOWN_DURATION = 5;
-var WIN_DISTANCE_THRESHOLD = 50; // in meters
-
-var DATA_TYPE = 'type';
-var DATA_ACTIVE = 'active';
-var DATA_START_TIME = 'start_time';
-var DATA_START_LOCATION = 'start_location';
-var DATA_TARGET_LOCATION = 'target_location';
-var DATA_TARGET_TITLE = 'target_title';
-
-var GameState = {
-  INIT: 'init',
-  LOAD: 'load',
-  RACE: 'race',
-  SCORES: 'scores'
-};
-
-var MessageType = {
-  REQUEST: 'request',
-  START: 'start',
-  POSITION: 'position',
-  STOP: 'stop',
-  PLAYER_COUNT: 'player_count'
-};
-
-var PlayerStatus = {
-  READY: 'ready',
-  ACTIVE: 'active',
-  WAITING: 'waiting',
-  FINISHED: 'finished'
-};
-
-
 
 /** @constructor */
 MapRacer = function() {
@@ -103,7 +67,7 @@ MapRacer = function() {
 
   /**
    * Map from Sender ID to the Sender object containing all connected devices.
-   * @type {Object.<string, cast.receiver.system.Sender>}
+   * @type {Object.<string, Player>}
    */
   this.players = {};
 
@@ -131,8 +95,6 @@ MapRacer.prototype.initializeMap_ = function() {
   // We disable all the controls as the user can't control anything anyway
   // directly on the TV.
   var mapOptions = {
-    zoom: 14,
-    center: new google.maps.LatLng(50.7658, 6.1059),
     mapTypeId: google.maps.MapTypeId.ROADMAP,
     disableDefaultUI: true,
     draggable: false
@@ -144,13 +106,14 @@ MapRacer.prototype.initializeMap_ = function() {
 
 
 /** @param {GameState} state The new state to show. */
-MapRacer.prototype.setUiState = function(state) {
+MapRacer.prototype.setState = function(state) {
   this.state = state;
   switch (state) {
     case GameState.INIT:
       this.splashEl.style.opacity = 1;
       this.titleEl.style.display = 'inline';
       this.titleEl.innerHTML = 'MapRacer';
+      this.leaderboard.setFullscreen(false);
       break;
     case GameState.LOAD:
       this.countdownInterval_ = setInterval(this.countdown_.bind(this), 1000);
@@ -165,13 +128,16 @@ MapRacer.prototype.setUiState = function(state) {
       break;
     case GameState.SCORES:
       clearInterval(this.timerInterval_);
+      this.leaderboard.setFullscreen(true);
+      setTimeout(this.setState.bind(this, GameState.INIT),
+          SCORE_DURATION * S_TO_MS);
       break;
   }
 };
 
 
-/** @private */
-MapRacer.prototype.maybeStartRace_ = function() {
+/***/
+MapRacer.prototype.maybeStartRace = function() {
   if (!this.race ||
       !this.race[DATA_START_LOCATION] ||
       !this.race[DATA_TARGET_LOCATION] ||
@@ -202,9 +168,8 @@ MapRacer.prototype.maybeStartRace_ = function() {
   // Reset all players
   for (var playerId in this.players) {
     var player = this.players[playerId];
-    player.marker.setPosition(this.race[DATA_START_LOCATION]);
-    player.path.setPath([this.race[DATA_START_LOCATION]]);
-    player.status = PlayerStatus.ACTIVE;
+    player.setStartPosition(this.race[DATA_START_LOCATION]);
+    player.setState(PlayerState.ACTIVE);
   }
 
   // Broadcast the game start event (TODO move somewhere else)
@@ -219,7 +184,20 @@ MapRacer.prototype.maybeStartRace_ = function() {
   payload[DATA_TARGET_TITLE] = this.race[DATA_TARGET_TITLE];
 
   this.messageBus.broadcast(payload);
-  this.setUiState(GameState.LOAD);
+  this.setState(GameState.LOAD);
+};
+
+
+/***/
+MapRacer.prototype.maybeFinishRace = function() {
+  var isActive = function(id) {
+    return this.players[id].isActive();
+  };
+
+  if (!Object.keys(this.players).some(isActive.bind(this))) {
+    // TODO: also stop if at least one has finished and some timeout has passed
+    this.setState(GameState.SCORES);
+  }
 };
 
 
@@ -253,7 +231,7 @@ MapRacer.prototype.countdown_ = function() {
       counter.style.opacity = '0';
     }, 10);
   } else {
-    this.setUiState(GameState.RACE);
+    this.setState(GameState.RACE);
   }
 };
 
@@ -268,43 +246,6 @@ MapRacer.prototype.updateTimer = function() {
       '.' + difference % 1000; // milliseconds
 
   this.timeEl.innerHTML = formatted;
-};
-
-
-/**
- * Checks if the player has won the game etc.
- * @param {String} playerId The player to check.
- * @param {google.maps.LatLng} location The player's new location.
- * @private
- */
-MapRacer.prototype.updatePlayerStatus_ = function(playerId, location) {
-  var player = this.players[playerId];
-
-  if (!player) {
-    console.log('UpdatePlayerStatus: Player not found ' + playerId);
-    return;
-  }
-
-  if (player.status == PlayerStatus.ACTIVE) {
-    player.marker.setPosition(location);
-    player.path.getPath().push(location);
-
-    var distanceToFinish =
-        google.maps.geometry.spherical.computeDistanceBetween(
-        location, this.race[DATA_TARGET_LOCATION]);
-
-    this.leaderboard.update(playerId, distanceToFinish);
-
-    if (distanceToFinish < WIN_DISTANCE_THRESHOLD) {
-      console.log('Player has finished! (' + playerId + ')');
-      player.status = PlayerStatus.FINISHED;
-      player.time = Date.now() - this.race[DATA_START_TIME];
-      player.marker.setIcon(this.playerFinishedIcon);
-      this.leaderboard.update(playerId, 0);
-      // TODO(marmat): Send message to client
-      // TODO(marmat): Update leaderboard
-    }
-  }
 };
 
 
@@ -333,7 +274,7 @@ MapRacer.prototype.onStreetViewLocation = function(id, panorama, status) {
         'desired game area. Please try a different location.';
   }
 
-  this.maybeStartRace_();
+  this.maybeStartRace();
 };
 
 
@@ -341,12 +282,17 @@ MapRacer.prototype.onStreetViewLocation = function(id, panorama, status) {
 MapRacer.prototype.onCastMessage = function(message) {
   console.dir(message);
 
-  switch (message.data[DATA_TYPE]) {
+  var data = message.data;
+  switch (data[DATA_TYPE]) {
     case MessageType.REQUEST:
-      this.onGameRequest(message.senderId, message.data);
+      this.onGameRequest(message.senderId, data);
       break;
     case MessageType.POSITION:
-      this.onPosition(message.senderId, message.data);
+      if (message.senderId in this.players) {
+        var location = new google.maps.LatLng(
+            data.location.lat, data.location.lng);
+        this.players[message.senderId].onPosition(location);
+      }
       break;
   }
 };
@@ -391,47 +337,14 @@ MapRacer.prototype.onGameRequest = function(senderId, payload) {
 };
 
 
-/**
- * @param {String} senderId The player's ID.
- * @param {Object} payload The message payload.
- */
-MapRacer.prototype.onPosition = function(senderId, payload) {
-  var playerLocation = new google.maps.LatLng(payload.location.lat,
-      payload.location.lng);
-
-  this.updatePlayerStatus_(senderId, playerLocation);
-};
-
-
 /** @param {cast.receiver.CastReceiverManager.Event} client The client. */
 MapRacer.prototype.onConnect = function(client) {
   console.log('Client connected!');
   console.dir(client);
 
-  var player = this.receiverManager.getSender(client.data);
-  player.marker = new google.maps.Marker({
-    map: this.map,
-    position: !!this.race ? this.race.start_location : {lat: 0, lng: 0},
-    icon: this.playerIcon
-  });
-
-  player.path = new google.maps.Polyline({
-    map: this.map,
-    path: [!!this.race ? this.race.start_location :
-          new google.maps.LatLng(0, 0)],
-    strokeColor: '#4390F7',
-    strokeOpacity: 0.6,
-    strokeWeight: 4
-  });
-
-  // TODO(marmat): Notify player if race has already started.
-  player.status = this.state == GameState.RACE ?
-      PlayerStatus.WAITING : PlayerStatus.READY;
-
-  this.players[client.data] = player;
-  this.leaderboard.add(client.data);
+  this.players[client.data] = new Player(client.data, this);
   this.sendPlayerCount_();
-  this.maybeStartRace_();
+  this.maybeStartRace();
 };
 
 
@@ -446,4 +359,5 @@ MapRacer.prototype.onDisconnect = function(client) {
   delete this.players[client.data];
 
   this.sendPlayerCount_();
+  this.maybeFinishRace();
 };

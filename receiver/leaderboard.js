@@ -16,6 +16,15 @@ Leaderboard = function(container) {
 
 
 /**
+ * @param {boolean} fullscreen Whether to show the Leaderboard in a fullscreen
+ *    mode.
+ */
+Leaderboard.prototype.setFullscreen = function(fullscreen) {
+  this.container_.classList.toggle('fullscreen', fullscreen);
+};
+
+
+/**
  * Adds a new player to the leaderboard.
  * @param {String} id The player's ID.
  * @param {String=} opt_displayName The name to show in the UI. If not set, the

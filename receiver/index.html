@@ -4,7 +4,9 @@
   <title>MapRacer</title>
   <script src="//www.gstatic.com/cast/sdk/libs/receiver/2.0.0/cast_receiver.js"></script>
   <script src="//maps.googleapis.com/maps/api/js?v=3.exp&amp;libraries=geometry&amp;sensor=false"></script>
+  <script src="constants.js"></script>
   <script src="leaderboard.js"></script>
+  <script src="player.js"></script>
   <script src="mapracer.js"></script>
   <style>
     body {
@@ -75,6 +77,23 @@
       transition: font-size 1s, opacity 1s;
       width: 100%;
     }
+
+    .fullscreen {
+      background: rgba(0,0,0,0.5);
+      border-radius: 40px;
+      box-sizing: border-box;
+      height: 90%;
+      left: 5%;
+      padding: 30px 80px;
+      position: fixed;
+      top: 5%;
+      width: 90%;
+    }
+
+    .fullscreen::before {
+      content: 'Race finished!';
+    }
+
   </style>
 </head>
 
