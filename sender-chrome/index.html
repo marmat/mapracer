@@ -53,6 +53,7 @@
     function log(text) {
       var log = document.getElementById('log');
       log.innerHTML += '<pre>' + text + '</pre>';
+      log.scrollTop = log.scrollHeight;
     }
 
     function onUpdate(alive) {
@@ -136,6 +137,13 @@
 
   </script>
   <script src="//maps.googleapis.com/maps/api/js?v=3.exp&amp;sensor=false"></script>
+
+  <style>
+    #log { height: 350px; overflow: auto; }
+    #log > pre { color: #999; }
+    #log > pre:last-child { color: #333; }
+    #log > pre:hover { color: #000; }
+  </style>
 </head>
 <body>
   <h1>Hello, Chrome!</h1>
