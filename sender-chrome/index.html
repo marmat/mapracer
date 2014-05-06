@@ -50,9 +50,25 @@
       console.log('Error!');
     }
 
+    function log(text) {
+      var log = document.getElementById('log');
+      log.innerHTML += '<pre>' + text + '</pre>';
+    }
+
+    function onUpdate(alive) {
+      log('Status Update: ' + alive);
+    }
+
+    function onMessage(a, b) {
+      // parse+stringify for pretty printing of objects
+      log(JSON.stringify(JSON.parse(b), undefined, 2));
+    }
+
     function sessionListener(e) {
       console.log('SessionListener@' + e.sessionId);
       session = e;
+      session.addUpdateListener(onUpdate);
+      session.addMessageListener(NAMESPACE, onMessage);
     }
 
     function receiverListener(e) {
@@ -134,6 +150,9 @@
   <input id="target_location" size="60" placeholder="Target [lat, lng]" />
   <button id="pick_target_location" class="location_pick" type="button">Pick on Map</button><br>
   <button id="transmit" type="button">Transmit</button>
+
+  <h2>Incoming Messages:</h2>
+  <div id="log"></div>
 
   <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
 </body>
