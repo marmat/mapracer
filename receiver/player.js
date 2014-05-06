@@ -80,6 +80,11 @@ Player.prototype.setStartPosition = function(position) {
 
 /** @param {PlayerState} state The player's new state. */
 Player.prototype.setState = function(state) {
+  // Do nothing if we aren't changing the state
+  if (this.state == state) {
+    return;
+  }
+
   this.state = state;
   switch (state) {
     case PlayerState.WAITING:

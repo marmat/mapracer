@@ -107,10 +107,15 @@ MapRacer.prototype.setState = function(state) {
   this.state = state;
   switch (state) {
     case GameState.INIT:
+      this.race = new Race();
       this.splashEl.style.opacity = 1;
       this.titleEl.style.display = 'inline';
       this.titleEl.innerHTML = 'MapRacer';
       this.leaderboard.setFullscreen(false);
+      // Reset all connected clients
+      for (var id in this.players) {
+        this.players[id].setState(PlayerState.WAITING);
+      }
       break;
     case GameState.LOAD:
       this.countdownInterval_ = setInterval(this.countdown_.bind(this), 1000);
