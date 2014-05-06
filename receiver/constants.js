@@ -33,3 +33,13 @@ var PlayerState = {
   WAITING: 'waiting',
   FINISHED: 'finished'
 };
+
+
+function formatTime(timestamp) {
+  var seconds = Math.floor((timestamp / 1000) % 60);
+  var formatted = Math.floor(timestamp / 60000) + // minutes
+      (seconds < 10 ? ':0' : ':') + seconds + // seconds
+      '.' + timestamp % 1000; // milliseconds
+
+  return formatted;
+}

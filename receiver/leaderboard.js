@@ -10,7 +10,7 @@ Leaderboard = function(container) {
   /** @private @type {Element} */
   this.container_ = container;
 
-  /** @type {Object.<String, Element>} */
+  /** @type {Object.<string, Element>} */
   this.entries = {};
 };
 
@@ -26,33 +26,35 @@ Leaderboard.prototype.setFullscreen = function(fullscreen) {
 
 /**
  * Adds a new player to the leaderboard.
- * @param {String} id The player's ID.
- * @param {String=} opt_displayName The name to show in the UI. If not set, the
+ * @param {string} id The player's ID.
+ * @param {string=} opt_displayName The name to show in the UI. If not set, the
  *     ID will be used as displayName.
  * @param {number=} opt_sortValue The value after which items will be sorted.
- * @param {String=} opt_color Color to use for the player. Default: white.
+ * @param {string=} opt_color Color to use for the player. Default: white.
  */
 Leaderboard.prototype.add = function(id, opt_displayName, opt_sortValue,
     opt_color) {
-  if (id in this.entries) {
-    return; // duplicate
+
+  // only create an element if it's truly new
+  if (!(id in this.entries)) {
+    var element = document.createElement('li');
+    element.innerHTML = opt_displayName || id;
+    element.style.color = opt_color || 'white';
+    this.entries[id] = element;
   }
 
-  var element = document.createElement('li');
-  element.innerHTML = opt_displayName || id;
-  element.style.color = opt_color || 'white';
-
-  this.entries[id] = element;
-  this.update(id, opt_sortValue || Infinity);
+  this.update(id, opt_sortValue || Infinity, opt_displayName);
 };
 
 
 /**
  * Updates a player's sortValue and re-sorts to maintain a correct ordering.
- * @param {String} id The affected player's ID.
+ * @param {string} id The affected player's ID.
  * @param {number} sortValue The player's new sortValue.
+ * @param {string=} opt_displayName If set, the player's name will be updated
+ *    to the given value.
  */
-Leaderboard.prototype.update = function(id, sortValue) {
+Leaderboard.prototype.update = function(id, sortValue, opt_displayName) {
   var element = this.entries[id];
   if (!element) {
     return; // does not exist
@@ -70,6 +72,10 @@ Leaderboard.prototype.update = function(id, sortValue) {
     }
   }
 
+  if (!!opt_displayName) {
+    element.innerHTML = opt_displayName;
+  }
+
   if (!!ref) {
     this.container_.insertBefore(element, ref);
   } else {
@@ -80,7 +86,7 @@ Leaderboard.prototype.update = function(id, sortValue) {
 
 /**
  * Removes a player from the list.
- * @param {String} id The player's ID.
+ * @param {string} id The player's ID.
  */
 Leaderboard.prototype.remove = function(id) {
   var element = this.entries[id];

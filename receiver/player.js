@@ -97,7 +97,8 @@ Player.prototype.setState = function(state) {
       icon.strokeWeight = 4;
       icon.strokeColor = this.colorRegular;
       this.marker.setIcon(icon);
-      this.game.leaderboard.update(this.id, -1 / this.time);
+      this.game.leaderboard.update(this.id, -1 / this.time,
+          this.name + ' (' + formatTime(this.time) + ')');
       this.game.maybeFinishRace();
       break;
   }

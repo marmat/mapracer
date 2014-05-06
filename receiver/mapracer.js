@@ -225,13 +225,7 @@ MapRacer.prototype.countdown_ = function() {
 /** Updates the visible UI timer */
 MapRacer.prototype.updateTimer = function() {
   var difference = Date.now() - this.race[DATA_START_TIME];
-  var seconds = Math.floor((difference / 1000) % 60);
-
-  var formatted = Math.floor(difference / 60000) + // minutes
-      (seconds < 10 ? ':0' : ':') + seconds + // seconds
-      '.' + difference % 1000; // milliseconds
-
-  this.timeEl.innerHTML = formatted;
+  this.timeEl.innerHTML = formatTime(difference);
 };
 
 
