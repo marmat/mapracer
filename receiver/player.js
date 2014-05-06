@@ -3,6 +3,11 @@ var static_playerNumber = 1;
 
 
 
+/**
+ * @param {string} id The player's ID.
+ * @param {MapRacer} game The game instance.
+ * @constructor
+ */
 Player = function(id, game) {
   this.id = id;
   this.game = game;
@@ -55,7 +60,7 @@ Player.prototype.onPosition = function(position) {
 
     var distanceToFinish =
         google.maps.geometry.spherical.computeDistanceBetween(
-        position, this.game.race[DATA_TARGET_LOCATION]);
+        position, this.game.race.targetLocation);
 
     this.game.leaderboard.update(this.id, distanceToFinish);
     if (distanceToFinish < WIN_DISTANCE_THRESHOLD) {
@@ -91,7 +96,7 @@ Player.prototype.setState = function(state) {
       this.marker.setIcon(icon);
       break;
     case PlayerState.FINISHED:
-      this.time = Date.now() - this.game.race[DATA_START_TIME];
+      this.time = Date.now() - this.game.race.startTime;
       var icon = this.marker.getIcon();
       icon.fillColor = this.colorLight;
       icon.strokeWeight = 4;
@@ -104,8 +109,7 @@ Player.prototype.setState = function(state) {
   }
 
   this.game.messageBus.send(this.id, {
-    type: MessageType.STATUS,
-    game: this.game.state,
+    type: MessageType.PLAYER_STATE,
     state: this.state
   });
 };

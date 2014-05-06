@@ -45,8 +45,8 @@ MapRacer = function() {
     anchor: new google.maps.Point(9, 43)
   };
 
-  /** @type {Object.<string, *>} */
-  this.race = null;
+  /** @type {Race} */
+  this.race = new Race();
 
   /** @type {GameState} */
   this.state = GameState.INIT;
@@ -91,6 +91,17 @@ MapRacer.prototype.initializeMap_ = function() {
 };
 
 
+/** @private */
+MapRacer.prototype.broadcastState_ = function() {
+  this.messageBus.broadcast({
+    type: MessageType.GAME_STATE,
+    players: Object.keys(this.players).length,
+    race: this.race.serialize(),
+    state: this.state
+  });
+};
+
+
 /** @param {GameState} state The new state to show. */
 MapRacer.prototype.setState = function(state) {
   this.state = state;
@@ -108,8 +119,7 @@ MapRacer.prototype.setState = function(state) {
     case GameState.RACE:
       clearInterval(this.countdownInterval_);
       this.splashEl.style.opacity = '0';
-      this.race[DATA_START_TIME] = Date.now();
-      this.race[DATA_ACTIVE] = true;
+      this.race.startTime = Date.now();
       this.timerInterval_ = setInterval(this.updateTimer.bind(this), 10);
       break;
     case GameState.SCORES:
@@ -119,14 +129,15 @@ MapRacer.prototype.setState = function(state) {
           SCORE_DURATION * S_TO_MS);
       break;
   }
+
+  this.broadcastState_();
 };
 
 
 /***/
 MapRacer.prototype.maybeStartRace = function() {
-  if (!this.race ||
-      !this.race[DATA_START_LOCATION] ||
-      !this.race[DATA_TARGET_LOCATION] ||
+  if (!this.race.startLocation ||
+      !this.race.targetLocation ||
       Object.keys(this.players).length < MIN_PLAYERS) {
     // we are not ready yet
     return;
@@ -137,39 +148,27 @@ MapRacer.prototype.maybeStartRace = function() {
     return;
   }
 
-  this.targetEl.innerHTML = this.race[DATA_TARGET_TITLE];
-  this.map.setCenter(this.race[DATA_START_LOCATION]);
+  this.targetEl.innerHTML = this.race.title;
+  this.map.setCenter(this.race.startLocation);
 
   var raceBounds = new google.maps.LatLngBounds();
-  raceBounds.extend(this.race[DATA_START_LOCATION]);
-  raceBounds.extend(this.race[DATA_TARGET_LOCATION]);
+  raceBounds.extend(this.race.startLocation);
+  raceBounds.extend(this.race.targetLocation);
   this.map.fitBounds(raceBounds);
 
   new google.maps.Marker({
     map: this.map,
-    position: this.race[DATA_TARGET_LOCATION],
+    position: this.race.targetLocation,
     icon: this.targetIcon
   });
 
   // Reset all players
   for (var playerId in this.players) {
     var player = this.players[playerId];
-    player.setStartPosition(this.race[DATA_START_LOCATION]);
+    player.setStartPosition(this.race.startLocation);
     player.setState(PlayerState.ACTIVE);
   }
 
-  // Broadcast the game start event (TODO move somewhere else)
-  var payload = {
-    type: MessageType.START
-  };
-
-  payload[DATA_TARGET_LOCATION] = this.convertLatLng(
-      this.race[DATA_TARGET_LOCATION]);
-  payload[DATA_START_LOCATION] = this.convertLatLng(
-      this.race[DATA_START_LOCATION]);
-  payload[DATA_TARGET_TITLE] = this.race[DATA_TARGET_TITLE];
-
-  this.messageBus.broadcast(payload);
   this.setState(GameState.LOAD);
 };
 
@@ -224,19 +223,8 @@ MapRacer.prototype.countdown_ = function() {
 
 /** Updates the visible UI timer */
 MapRacer.prototype.updateTimer = function() {
-  var difference = Date.now() - this.race[DATA_START_TIME];
+  var difference = Date.now() - this.race.startTime;
   this.timeEl.innerHTML = formatTime(difference);
-};
-
-
-/** @private */
-MapRacer.prototype.sendPlayerCount_ = function() {
-  var payload = {
-    type: MessageType.PLAYER_COUNT,
-    count: Object.keys(this.players).length
-  };
-
-  this.messageBus.broadcast(payload);
 };
 
 
@@ -263,7 +251,7 @@ MapRacer.prototype.onCastMessage = function(message) {
   console.dir(message);
 
   var data = message.data;
-  switch (data[DATA_TYPE]) {
+  switch (data.type) {
     case MessageType.REQUEST:
       this.onGameRequest(message.senderId, data);
       break;
@@ -283,37 +271,22 @@ MapRacer.prototype.onCastMessage = function(message) {
  * @param {Object} payload The message payload.
  */
 MapRacer.prototype.onGameRequest = function(senderId, payload) {
+  // TODO: ignore request if race is already in progress
+  this.race = new Race(payload);
 
-  this.race = {};
-  this.race[DATA_TARGET_TITLE] = payload[DATA_TARGET_TITLE] || 'the finish';
+  // Check back with StreetView if the provided locations are valid
+  var targetLocation = this.race.targetLocation || this.pickTarget();
+  var startLocation = this.race.startLocation || this.pickStart(targetLocation);
 
-  var targetLocation = null;
-  if (!!payload[DATA_TARGET_LOCATION]) {
-    targetLocation = new google.maps.LatLng(
-        payload[DATA_TARGET_LOCATION].lat,
-        payload[DATA_TARGET_LOCATION].lng);
-  } else {
-    // Pick an interesting location at random
-    // TODO
-    targetLocation = new google.maps.LatLng(0, 0);
-  }
+  // Invalidate race locations for now
+  this.race.targetLocation = null;
+  this.race.startLocation = null;
 
   this.streetViewService.getPanoramaByLocation(targetLocation, 50,
-      this.onStreetViewLocation.bind(this, DATA_TARGET_LOCATION));
-
-  var startLocation = null;
-  if (!!payload[DATA_START_LOCATION]) {
-    startLocation = new google.maps.LatLng(
-        payload[DATA_START_LOCATION].lat,
-        payload[DATA_START_LOCATION].lng);
-  } else {
-    // Pick a location somewhat close to the target
-    // TODO
-    startLocation = new google.maps.LatLng(0, 0);
-  }
+      this.onStreetViewLocation.bind(this, 'targetLocation'));
 
   this.streetViewService.getPanoramaByLocation(startLocation, 50,
-      this.onStreetViewLocation.bind(this, DATA_START_LOCATION));
+      this.onStreetViewLocation.bind(this, 'startLocation'));
 };
 
 
@@ -323,7 +296,7 @@ MapRacer.prototype.onConnect = function(client) {
   console.dir(client);
 
   this.players[client.data] = new Player(client.data, this);
-  this.sendPlayerCount_();
+  this.broadcastState_();
   this.maybeStartRace();
 };
 
@@ -338,6 +311,6 @@ MapRacer.prototype.onDisconnect = function(client) {
   this.players[client.data].path.setMap(null);
   delete this.players[client.data];
 
-  this.sendPlayerCount_();
+  this.broadcastState_();
   this.maybeFinishRace();
 };
