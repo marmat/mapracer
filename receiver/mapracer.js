@@ -18,6 +18,9 @@ MapRacer = function() {
   this.titleEl = document.querySelector('#title');
 
   /** @type {Element} */
+  this.infoEl = document.querySelector('#info');
+
+  /** @type {Element} */
   this.targetEl = document.querySelector('#target');
 
   /** @type {Element} */
@@ -109,8 +112,7 @@ MapRacer.prototype.setState = function(state) {
     case GameState.INIT:
       this.race = new Race();
       this.splashEl.style.opacity = 1;
-      this.titleEl.style.display = 'inline';
-      this.titleEl.innerHTML = 'MapRacer';
+      this.infoEl.innerHTML = '';
       this.leaderboard.setFullscreen(false);
       // Reset all connected clients
       for (var id in this.players) {
@@ -119,7 +121,7 @@ MapRacer.prototype.setState = function(state) {
       break;
     case GameState.LOAD:
       this.countdownInterval_ = setInterval(this.countdown_.bind(this), 1000);
-      this.titleEl.innerHTML = 'Get Ready!';
+      this.infoEl.innerHTML = 'Get Ready!';
       // TODO: isolate countdown logic somewhere else, e.g.:
       // new Countdown(DURATION, this.setState.bind(this, GameState.RACE));
       break;
@@ -256,7 +258,7 @@ MapRacer.prototype.onStreetViewLocation = function(id, panorama, status) {
   if (status == google.maps.StreetViewStatus.OK) {
     this.race[id] = panorama.location.latLng;
   } else {
-    this.titleEl.innerHTML = 'Warning: StreetView not available in the ' +
+    this.infoEl.innerHTML = 'Warning: StreetView not available in the ' +
         'desired game area. Please try a different location.';
   }
 
