@@ -120,6 +120,8 @@ MapRacer.prototype.setState = function(state) {
     case GameState.LOAD:
       this.countdownInterval_ = setInterval(this.countdown_.bind(this), 1000);
       this.titleEl.innerHTML = 'Get Ready!';
+      // TODO: isolate countdown logic somewhere else, e.g.:
+      // new Countdown(DURATION, this.setState.bind(this, GameState.RACE));
       break;
     case GameState.RACE:
       clearInterval(this.countdownInterval_);
@@ -191,15 +193,6 @@ MapRacer.prototype.maybeFinishRace = function() {
 };
 
 
-/**
- * @param {google.maps.LatLng} latLng The LatLng object to convert.
- * @return {Object} A better serializible object.
- */
-MapRacer.prototype.convertLatLng = function(latLng) {
-  return {lat: latLng.lat(), lng: latLng.lng()};
-};
-
-
 /** @private */
 MapRacer.prototype.countdown_ = function() {
   var nextCount = COUNTDOWN_DURATION;
@@ -230,6 +223,26 @@ MapRacer.prototype.countdown_ = function() {
 MapRacer.prototype.updateTimer = function() {
   var difference = Date.now() - this.race.startTime;
   this.timeEl.innerHTML = formatTime(difference);
+};
+
+
+/**
+ * @param {google.maps.LatLng=} opt_bias The user's coarse location in order to
+ *     choose a POI in his proximity (if available).
+ * @return {google.maps.LatLng} A random POI that can be used as a race target.
+ */
+MapRacer.prototype.pickTarget = function(opt_bias) {
+  return new google.maps.LatLng(0, 0);
+};
+
+
+/**
+ * @param {google.maps.LatLng} target The chosen target location.
+ * @return {google.maps.LatLng} A location somewhat close to the given target
+ *    which can be used as a starting location for the race.
+ */
+MapRacer.prototype.pickStart = function(target) {
+  return new google.maps.LatLng(0, 0);
 };
 
 
@@ -276,16 +289,18 @@ MapRacer.prototype.onCastMessage = function(message) {
  * @param {Object} payload The message payload.
  */
 MapRacer.prototype.onGameRequest = function(senderId, payload) {
-  // TODO: ignore request if race is already in progress
-  this.race = new Race(payload);
+  if (this.state != GameState.INIT) {
+    return;
+  }
+
+  // Parse the incoming request and initialize a new race object
+  var request = new Race(payload);
+  this.race = new Race();
+  this.race.title = request.title;
 
   // Check back with StreetView if the provided locations are valid
-  var targetLocation = this.race.targetLocation || this.pickTarget();
-  var startLocation = this.race.startLocation || this.pickStart(targetLocation);
-
-  // Invalidate race locations for now
-  this.race.targetLocation = null;
-  this.race.startLocation = null;
+  var targetLocation = request.targetLocation || this.pickTarget();
+  var startLocation = request.startLocation || this.pickStart(targetLocation);
 
   this.streetViewService.getPanoramaByLocation(targetLocation, 50,
       this.onStreetViewLocation.bind(this, 'targetLocation'));
@@ -297,8 +312,7 @@ MapRacer.prototype.onGameRequest = function(senderId, payload) {
 
 /** @param {cast.receiver.CastReceiverManager.Event} client The client. */
 MapRacer.prototype.onConnect = function(client) {
-  console.log('Client connected!');
-  console.dir(client);
+  console.log('Client connect: ' + client.data);
 
   this.players[client.data] = new Player(client.data, this);
   this.broadcastState_();
@@ -308,12 +322,12 @@ MapRacer.prototype.onConnect = function(client) {
 
 /** @param {cast.receiver.CastReceiverManager.Event} client The client. */
 MapRacer.prototype.onDisconnect = function(client) {
-  console.log('Client disconnected!');
-  console.dir(client);
+  console.log('Client disconnect: ' + client.data);
+  if (!(client.data in this.players)) {
+    return;
+  }
 
-  this.leaderboard.remove(client.data);
-  this.players[client.data].marker.setMap(null);
-  this.players[client.data].path.setMap(null);
+  this.players[client.data].dispose();
   delete this.players[client.data];
 
   this.broadcastState_();

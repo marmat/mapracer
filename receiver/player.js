@@ -46,6 +46,14 @@ Player = function(id, game) {
 };
 
 
+/** Destructor */
+Player.prototype.dispose = function() {
+  this.game.leaderboard.remove(this.id);
+  this.marker.setMap(null);
+  this.path.setMap(null);
+};
+
+
 /** @return {boolean} Whether the player is currently active. */
 Player.prototype.isActive = function() {
   return this.state == PlayerState.ACTIVE;
