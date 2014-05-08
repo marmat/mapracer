@@ -5,6 +5,7 @@
   <script src="//www.gstatic.com/cast/sdk/libs/receiver/2.0.0/cast_receiver.js"></script>
   <script src="//maps.googleapis.com/maps/api/js?v=3.exp&amp;libraries=geometry&amp;sensor=false"></script>
   <script src="constants.js"></script>
+  <script src="countdown.js"></script>
   <script src="leaderboard.js"></script>
   <script src="player.js"></script>
   <script src="race.js"></script>
@@ -75,13 +76,11 @@
 
     .counter {
       color: white;
-      font-size: 50px;
+      font-size: 200px;
       opacity: 1;
       position: absolute;
       text-align: center;
       text-shadow: 0px 0px 10px rgba(0,0,0,0.5);
-      top: 10%;
-      transition: font-size 1s, opacity 1s;
       width: 100%;
     }
 
@@ -112,6 +111,7 @@
     <span id="time">0:00.000</span>
   </div>
   <div id="splash">
+    <div id="countdown"></div>
     <h1 id="title">MapRacer</h1>
     <p id="info"></p>
   </div>

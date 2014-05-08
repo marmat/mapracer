@@ -26,6 +26,10 @@ MapRacer = function() {
   /** @type {Element} */
   this.splashEl = document.querySelector('#splash');
 
+  /** @type {Countdown} */
+  this.countdown = new Countdown(document.querySelector('#countdown'));
+  this.countdown.addFinishCallback(this.setState.bind(this, GameState.RACE));
+
   /** @type {Leaderboard} */
   this.leaderboard = new Leaderboard(document.querySelector('#leaderboard'));
 
@@ -120,13 +124,10 @@ MapRacer.prototype.setState = function(state) {
       }
       break;
     case GameState.LOAD:
-      this.countdownInterval_ = setInterval(this.countdown_.bind(this), 1000);
       this.infoEl.innerHTML = 'Get Ready!';
-      // TODO: isolate countdown logic somewhere else, e.g.:
-      // new Countdown(DURATION, this.setState.bind(this, GameState.RACE));
+      this.countdown.start(COUNTDOWN_DURATION);
       break;
     case GameState.RACE:
-      clearInterval(this.countdownInterval_);
       this.splashEl.style.opacity = '0';
       this.race.startTime = Date.now();
       this.timerInterval_ = setInterval(this.updateTimer.bind(this), 10);
@@ -191,32 +192,6 @@ MapRacer.prototype.maybeFinishRace = function() {
   if (!Object.keys(this.players).some(isActive.bind(this))) {
     // TODO: also stop if at least one has finished and some timeout has passed
     this.setState(GameState.SCORES);
-  }
-};
-
-
-/** @private */
-MapRacer.prototype.countdown_ = function() {
-  var nextCount = COUNTDOWN_DURATION;
-
-  var old = document.querySelector('.counter');
-  if (!!old) {
-    nextCount = old.innerHTML - 1;
-    old.parentNode.removeChild(old);
-  }
-
-  if (nextCount > 0) {
-    var counter = document.createElement('span');
-    counter.innerHTML = nextCount;
-    counter.className = 'counter';
-
-    this.splashEl.appendChild(counter);
-    setTimeout(function() {
-      counter.style.fontSize = '220px';
-      counter.style.opacity = '0';
-    }, 10);
-  } else {
-    this.setState(GameState.RACE);
   }
 };
 
