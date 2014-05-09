@@ -24,4 +24,5 @@ dependencies {
     compile 'com.android.support:mediarouter-v7:+'
     compile 'com.google.android.gms:play-services:+'
     compile 'com.android.support:support-v4:19.+'
+    compile files('libs/gson-2.2.4.jar')
 }

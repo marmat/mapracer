@@ -26,6 +26,12 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 
+import de.martinmatysiak.mapracer.data.GameState;
+import de.martinmatysiak.mapracer.data.GameStateMessage;
+import de.martinmatysiak.mapracer.data.Message;
+import de.martinmatysiak.mapracer.data.PlayerState;
+import de.martinmatysiak.mapracer.data.PlayerStateMessage;
+
 
 public class MenuActivity
         extends ActionBarActivity
@@ -36,6 +42,9 @@ public class MenuActivity
         ResultCallback<Cast.ApplicationConnectionResult> {
 
     public static final String TAG = "MenuActivity";
+
+    String mPlayerState = PlayerState.WAITING;
+    String mGameState = GameState.INIT;
 
     GoogleApiClient mApiClient;
     Cast.Listener mCastClientListener = new Cast.Listener() {
@@ -203,34 +212,28 @@ public class MenuActivity
     }
 
     @Override
-    public void onMessageReceived(CastDevice castDevice, String namespace, String message) {
-        Log.d(TAG, "onMessageReceived: " + message);
+    public void onMessageReceived(CastDevice castDevice, String namespace, String json) {
+        Log.d(TAG, "onMessageReceived: " + json);
 
-        try {
-            JSONObject payload = new JSONObject(message);
-            if (!payload.has(Constants.DATA_TYPE)) {
-                return;
-            }
+        Message message = Message.getConfiguredGson().fromJson(json, Message.class);
 
-            String messageType = payload.getString(Constants.DATA_TYPE);
+        if (message instanceof GameStateMessage) {
+            GameStateMessage gsm = (GameStateMessage) message;
+            mGameState = gsm.state;
+            ((TextView) findViewById(R.id.player_count)).setText(Integer.toString(gsm.players));
 
-            if (messageType.equals(Constants.GAME_START)) {
+            if (mPlayerState.equals(PlayerState.ACTIVE) &&
+                    (mGameState.equals(GameState.LOAD) || mGameState.equals(GameState.RACE))) {
                 Intent intent = new Intent(this, MapActivity.class);
                 intent.putExtra(Constants.INTENT_DEVICE, mSelectedDevice);
-                intent.putExtra(Constants.DATA_START_LOCATION,
-                        Constants.jsonToLatLng(payload.getJSONObject(Constants.DATA_START_LOCATION)));
-                intent.putExtra(Constants.DATA_TARGET_LOCATION,
-                        Constants.jsonToLatLng(payload.getJSONObject(Constants.DATA_TARGET_LOCATION)));
-                intent.putExtra(Constants.DATA_TARGET_TITLE,
-                        payload.getString(Constants.DATA_TARGET_TITLE));
+                intent.putExtra(Constants.DATA_START_LOCATION, gsm.race.startLocation);
+                intent.putExtra(Constants.DATA_TARGET_LOCATION, gsm.race.targetLocation);
+                intent.putExtra(Constants.DATA_TARGET_TITLE, gsm.race.targetTitle);
                 startActivity(intent);
-            } else if (messageType.equals(Constants.GAME_PLAYER_COUNT)) {
-                int count = payload.getInt("count");
-                ((TextView) findViewById(R.id.player_count)).setText(Integer.toString(count));
             }
 
-        } catch (JSONException e) {
-            Log.w(TAG, "Failed to parse message from Cast device", e);
+        } else if (message instanceof PlayerStateMessage) {
+            mPlayerState = ((PlayerStateMessage) message).state;
         }
     }
 }
