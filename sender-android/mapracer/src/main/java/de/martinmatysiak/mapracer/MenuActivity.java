@@ -21,9 +21,6 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.IOException;
 
 import de.martinmatysiak.mapracer.data.GameState;
@@ -31,6 +28,7 @@ import de.martinmatysiak.mapracer.data.GameStateMessage;
 import de.martinmatysiak.mapracer.data.Message;
 import de.martinmatysiak.mapracer.data.PlayerState;
 import de.martinmatysiak.mapracer.data.PlayerStateMessage;
+import de.martinmatysiak.mapracer.data.RequestMessage;
 
 
 public class MenuActivity
@@ -172,19 +170,13 @@ public class MenuActivity
 
     public void onClick(View v) {
         // Transmit game data to the cast device
-        JSONObject o = new JSONObject();
-        try {
-            o.put(Constants.DATA_TYPE, Constants.GAME_REQUEST);
-            o.put(Constants.DATA_START_LOCATION,
-                    Constants.latLngToJson(Constants.DEBUG_START_LOCATION));
-            o.put(Constants.DATA_TARGET_LOCATION,
-                    Constants.latLngToJson(Constants.DEBUG_TARGET_LOCATION));
-            o.put(Constants.DATA_TARGET_TITLE, Constants.DEBUG_TARGET_TITLE);
-        } catch (JSONException e) {
-            Log.w(TAG, "Exception while building payload", e);
-        }
+        RequestMessage message = new RequestMessage.Builder()
+                .withStart(Constants.DEBUG_START_LOCATION)
+                .withTarget(Constants.DATA_TARGET_TITLE, Constants.DEBUG_TARGET_LOCATION)
+                .build();
 
-        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, o.toString());
+        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
+                Message.getConfiguredGson().toJson(message));
     }
 
     private void updateUi() {
