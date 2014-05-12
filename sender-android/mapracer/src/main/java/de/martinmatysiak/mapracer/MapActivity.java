@@ -12,9 +12,10 @@ import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.maps.model.LatLng;
 
 import java.io.IOException;
+
+import de.martinmatysiak.mapracer.data.GameStateMessage;
 
 
 public class MapActivity
@@ -29,9 +30,7 @@ public class MapActivity
 
     CastDevice mSelectedDevice;
     GoogleApiClient mApiClient;
-    LatLng mStartLocation;
-    LatLng mTargetLocation;
-    String mTargetTitle;
+    GameStateMessage.Race mRace;
 
 
     Cast.Listener mCastClientListener = new Cast.Listener() {
@@ -64,9 +63,7 @@ public class MapActivity
 
         // Gather game-specific parameters
         Intent intent = getIntent();
-        mStartLocation = intent.getParcelableExtra(Constants.DATA_START_LOCATION);
-        mTargetLocation = intent.getParcelableExtra(Constants.DATA_TARGET_LOCATION);
-        mTargetTitle = intent.getStringExtra(Constants.DATA_TARGET_TITLE);
+        mRace = intent.getParcelableExtra(Constants.INTENT_RACE);
         mSelectedDevice = intent.getParcelableExtra(Constants.INTENT_DEVICE);
         Log.d(TAG, "Device: " + mSelectedDevice.getDeviceId());
 
@@ -76,7 +73,7 @@ public class MapActivity
         streetView.getSettings().setJavaScriptEnabled(true);
         streetView.addJavascriptInterface(this, "AndroidCast");
         streetView.loadUrl("file:///android_asset/index.html#" +
-                mStartLocation.latitude + "," + mStartLocation.longitude);
+                mRace.startLocation.latitude + "," + mRace.startLocation.longitude);
 
         // Reconnect to the cast device and enable communication
         Cast.CastOptions.Builder apiOptionsBuilder = Cast.CastOptions

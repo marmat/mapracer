@@ -43,6 +43,7 @@ public class MenuActivity
 
     String mPlayerState = PlayerState.WAITING;
     String mGameState = GameState.INIT;
+    GameStateMessage.Race mRace = null;
 
     GoogleApiClient mApiClient;
     Cast.Listener mCastClientListener = new Cast.Listener() {
@@ -172,7 +173,7 @@ public class MenuActivity
         // Transmit game data to the cast device
         RequestMessage message = new RequestMessage.Builder()
                 .withStart(Constants.DEBUG_START_LOCATION)
-                .withTarget(Constants.DATA_TARGET_TITLE, Constants.DEBUG_TARGET_LOCATION)
+                .withTarget(Constants.DEBUG_TARGET_TITLE, Constants.DEBUG_TARGET_LOCATION)
                 .build();
 
         Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
@@ -212,20 +213,19 @@ public class MenuActivity
         if (message instanceof GameStateMessage) {
             GameStateMessage gsm = (GameStateMessage) message;
             mGameState = gsm.state;
+            mRace = gsm.race;
             ((TextView) findViewById(R.id.player_count)).setText(Integer.toString(gsm.players));
-
-            if (mPlayerState.equals(PlayerState.ACTIVE) &&
-                    (mGameState.equals(GameState.LOAD) || mGameState.equals(GameState.RACE))) {
-                Intent intent = new Intent(this, MapActivity.class);
-                intent.putExtra(Constants.INTENT_DEVICE, mSelectedDevice);
-                intent.putExtra(Constants.DATA_START_LOCATION, gsm.race.startLocation);
-                intent.putExtra(Constants.DATA_TARGET_LOCATION, gsm.race.targetLocation);
-                intent.putExtra(Constants.DATA_TARGET_TITLE, gsm.race.targetTitle);
-                startActivity(intent);
-            }
-
         } else if (message instanceof PlayerStateMessage) {
             mPlayerState = ((PlayerStateMessage) message).state;
+        }
+
+        if (mRace != null &&
+                mPlayerState.equals(PlayerState.ACTIVE) &&
+                (mGameState.equals(GameState.LOAD) || mGameState.equals(GameState.RACE))) {
+            Intent intent = new Intent(this, MapActivity.class);
+            intent.putExtra(Constants.INTENT_DEVICE, mSelectedDevice);
+            intent.putExtra(Constants.INTENT_RACE, mRace);
+            startActivity(intent);
         }
     }
 }
