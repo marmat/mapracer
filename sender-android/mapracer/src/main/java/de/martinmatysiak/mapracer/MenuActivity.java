@@ -41,7 +41,7 @@ public class MenuActivity
 
     public static final String TAG = "MenuActivity";
 
-    String mPlayerState = PlayerState.WAITING;
+    PlayerState mPlayerState = PlayerState.WAITING;
     GameState mGameState = GameState.INIT;
     GameStateMessage.Race mRace = null;
 
@@ -215,14 +215,13 @@ public class MenuActivity
             mGameState = gsm.state;
             mRace = gsm.race;
             ((TextView) findViewById(R.id.player_count)).setText(Integer.toString(gsm.players));
-            Log.d(TAG, Message.getConfiguredGson().toJson(gsm));
         } else if (message instanceof PlayerStateMessage) {
             mPlayerState = ((PlayerStateMessage) message).state;
         }
 
         if (mRace != null &&
-                mPlayerState.equals(PlayerState.ACTIVE) &&
-                (mGameState.equals(GameState.LOAD) || mGameState.equals(GameState.RACE))) {
+                mPlayerState == PlayerState.ACTIVE &&
+                mGameState == GameState.LOAD || mGameState == GameState.RACE) {
             Intent intent = new Intent(this, MapActivity.class);
             intent.putExtra(Constants.INTENT_DEVICE, mSelectedDevice);
             intent.putExtra(Constants.INTENT_RACE, mRace);

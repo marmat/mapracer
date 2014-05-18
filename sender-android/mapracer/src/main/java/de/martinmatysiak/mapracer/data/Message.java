@@ -21,6 +21,7 @@ public class Message {
             .registerTypeAdapter(Message.class, new MessageDeserializer())
             .registerTypeAdapter(LatLng.class, new LatLngSerializer())
             .registerTypeAdapter(GameState.class, new GameStateSerializer())
+            .registerTypeAdapter(PlayerState.class, new PlayerStateSerializer())
             .create();
 
     public Message(String type) {
