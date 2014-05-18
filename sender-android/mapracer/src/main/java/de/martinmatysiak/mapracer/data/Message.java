@@ -20,6 +20,7 @@ public class Message {
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .registerTypeAdapter(Message.class, new MessageDeserializer())
             .registerTypeAdapter(LatLng.class, new LatLngSerializer())
+            .registerTypeAdapter(GameState.class, new GameStateSerializer())
             .create();
 
     public Message(String type) {

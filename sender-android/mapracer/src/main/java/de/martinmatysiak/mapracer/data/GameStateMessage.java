@@ -9,7 +9,7 @@ public class GameStateMessage extends Message {
     public static final String TYPE = "game_state";
 
     public int players;
-    public String state;
+    public GameState state;
     public Race race;
 
     public GameStateMessage() {

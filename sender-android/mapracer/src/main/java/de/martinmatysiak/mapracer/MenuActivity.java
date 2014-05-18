@@ -42,7 +42,7 @@ public class MenuActivity
     public static final String TAG = "MenuActivity";
 
     String mPlayerState = PlayerState.WAITING;
-    String mGameState = GameState.INIT;
+    GameState mGameState = GameState.INIT;
     GameStateMessage.Race mRace = null;
 
     GoogleApiClient mApiClient;
@@ -215,6 +215,7 @@ public class MenuActivity
             mGameState = gsm.state;
             mRace = gsm.race;
             ((TextView) findViewById(R.id.player_count)).setText(Integer.toString(gsm.players));
+            Log.d(TAG, Message.getConfiguredGson().toJson(gsm));
         } else if (message instanceof PlayerStateMessage) {
             mPlayerState = ((PlayerStateMessage) message).state;
         }
