@@ -221,7 +221,7 @@ public class MenuActivity
 
         if (mRace != null &&
                 mPlayerState == PlayerState.ACTIVE &&
-                mGameState == GameState.LOAD || mGameState == GameState.RACE) {
+                (mGameState == GameState.LOAD || mGameState == GameState.RACE)) {
             Intent intent = new Intent(this, MapActivity.class);
             intent.putExtra(Constants.INTENT_DEVICE, mSelectedDevice);
             intent.putExtra(Constants.INTENT_RACE, mRace);
