@@ -6,13 +6,16 @@ var static_playerNumber = 1;
 /**
  * @param {string} id The player's ID.
  * @param {MapRacer} game The game instance.
+ * @param {string=} opt_name The player's name.
+ * @param {string=} opt_senderId The player's last known senderId.
  * @constructor
  */
-Player = function(id, game) {
+Player = function(id, game, opt_name, opt_senderId) {
   this.id = id;
   this.game = game;
-  this.name = 'Player ' + static_playerNumber++;
+  this.name = opt_name || ('Player ' + static_playerNumber++);
   this.state = null;
+  this.senderId = opt_senderId || null;
 
   /** Determine the player's individual color */
   this.hue = Math.round(Math.random() * 360);
@@ -86,6 +89,18 @@ Player.prototype.setStartPosition = function(position) {
 };
 
 
+/** @param {string} senderId The player's new or last known sender ID. */
+Player.prototype.setSenderId = function(senderId) {
+  this.senderId = senderId;
+
+  // Resend the player's state to make sure it has the right data
+  this.game.messageBus.send(this.senderId, {
+    type: MessageType.PLAYER_STATE,
+    state: this.state
+  });
+};
+
+
 /** @param {PlayerState} state The player's new state. */
 Player.prototype.setState = function(state) {
   // Do nothing if we aren't changing the state
@@ -121,7 +136,7 @@ Player.prototype.setState = function(state) {
       break;
   }
 
-  this.game.messageBus.send(this.id, {
+  this.game.messageBus.send(this.senderId, {
     type: MessageType.PLAYER_STATE,
     state: this.state
   });

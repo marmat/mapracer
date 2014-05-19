@@ -7,6 +7,7 @@ var S_TO_MS = 1000;
 
 var MessageType = {
   // incoming messages
+  LOGIN: 'login',
   REQUEST: 'request',
   POSITION: 'position',
   // outgoing messages

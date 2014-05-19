@@ -59,10 +59,16 @@ MapRacer = function() {
   this.state = GameState.INIT;
 
   /**
-   * Map from Sender ID to the Sender object containing all connected devices.
+   * Map from Player ID to the Player object.
    * @type {Object.<string, Player>}
    */
   this.players = {};
+
+  /**
+   * Map from Sender ID to Player ID (many-to-one relationship).
+   * @type {Obejct.<string, string>}
+   */
+  this.senders = {};
 
   this.initializeCast_();
   this.initializeMap_();
@@ -209,7 +215,7 @@ MapRacer.prototype.updateTimer = function() {
  * @return {google.maps.LatLng} A random POI that can be used as a race target.
  */
 MapRacer.prototype.pickTarget = function(opt_bias) {
-  return new google.maps.LatLng(0, 0);
+  return new google.maps.LatLng(37.420283, -122.083961);
 };
 
 
@@ -219,7 +225,7 @@ MapRacer.prototype.pickTarget = function(opt_bias) {
  *    which can be used as a starting location for the race.
  */
 MapRacer.prototype.pickStart = function(target) {
-  return new google.maps.LatLng(0, 0);
+  return new google.maps.LatLng(37.413084, -122.069217);
 };
 
 
@@ -246,26 +252,30 @@ MapRacer.prototype.onCastMessage = function(message) {
   console.dir(message);
 
   var data = message.data;
+  var playerId = this.senders[message.senderId];
   switch (data.type) {
     case MessageType.REQUEST:
-      this.onGameRequest(message.senderId, data);
+      this.onGameRequest(playerId, data);
       break;
     case MessageType.POSITION:
-      if (message.senderId in this.players) {
+      if (playerId in this.players) {
         var location = new google.maps.LatLng(
             data.location.lat, data.location.lng);
-        this.players[message.senderId].onPosition(location);
+        this.players[playerId].onPosition(location);
       }
+      break;
+    case MessageType.LOGIN:
+      this.onLogin(message.senderId, data);
       break;
   }
 };
 
 
 /**
- * @param {String} senderId The player's ID.
+ * @param {string} playerId The player's ID.
  * @param {Object} payload The message payload.
  */
-MapRacer.prototype.onGameRequest = function(senderId, payload) {
+MapRacer.prototype.onGameRequest = function(playerId, payload) {
   if (this.state != GameState.INIT) {
     return;
   }
@@ -287,25 +297,47 @@ MapRacer.prototype.onGameRequest = function(senderId, payload) {
 };
 
 
-/** @param {cast.receiver.CastReceiverManager.Event} client The client. */
-MapRacer.prototype.onConnect = function(client) {
-  console.log('Client connect: ' + client.data);
+/**
+ * After connecting, the sender has to specify its ID and possibly name.
+ * Using the senderId does not work with Android devices as the IDs change
+ * when switching views.
+ * @param {string} senderId The sender's cast ID.
+ * @param {Object} payload The login object.
+ */
+MapRacer.prototype.onLogin = function(senderId, payload) {
+  console.log('Client login: ' + senderId);
 
-  this.players[client.data] = new Player(client.data, this);
+  // Check if a sender has just reconnected or if it's an entirely new one
+  if (payload.id in this.players) {
+    this.players[payload.id].setSenderId(senderId);
+  } else {
+    this.players[payload.id] = new Player(payload.id, this,
+        payload.name, senderId);
+  }
+
+  this.senders[senderId] = payload.id;
   this.broadcastState_();
   this.maybeStartRace();
 };
 
 
 /** @param {cast.receiver.CastReceiverManager.Event} client The client. */
+MapRacer.prototype.onConnect = function(client) {
+  console.log('Client connect: ' + client.data);
+  this.senders[client.data] = null;
+};
+
+
+/** @param {cast.receiver.CastReceiverManager.Event} client The client. */
 MapRacer.prototype.onDisconnect = function(client) {
   console.log('Client disconnect: ' + client.data);
-  if (!(client.data in this.players)) {
+  if (!(client.data in this.senders)) {
     return;
   }
 
-  this.players[client.data].dispose();
-  delete this.players[client.data];
+  var playerId = this.senders[client.data];
+  this.players[playerId].dispose();
+  delete this.players[playerId];
 
   this.broadcastState_();
   this.maybeFinishRace();
