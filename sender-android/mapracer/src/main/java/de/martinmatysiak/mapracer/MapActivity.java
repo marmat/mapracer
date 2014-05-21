@@ -2,6 +2,7 @@ package de.martinmatysiak.mapracer;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
@@ -16,6 +17,8 @@ import com.google.android.gms.common.api.ResultCallback;
 import java.io.IOException;
 
 import de.martinmatysiak.mapracer.data.GameStateMessage;
+import de.martinmatysiak.mapracer.data.LoginMessage;
+import de.martinmatysiak.mapracer.data.Message;
 
 
 public class MapActivity
@@ -31,6 +34,7 @@ public class MapActivity
     CastDevice mSelectedDevice;
     GoogleApiClient mApiClient;
     GameStateMessage.Race mRace;
+    SharedPreferences mPreferences;
 
 
     Cast.Listener mCastClientListener = new Cast.Listener() {
@@ -60,6 +64,7 @@ public class MapActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
+        mPreferences = getSharedPreferences(Constants.PREFERENCES, MODE_PRIVATE);
 
         // Gather game-specific parameters
         Intent intent = getIntent();
@@ -116,6 +121,14 @@ public class MapActivity
             } catch (IOException e) {
                 Log.e(TAG, "Exception while creating channel", e);
             }
+
+            // Login with our UUID
+            LoginMessage message = new LoginMessage.Builder()
+                    .withId(mPreferences.getString(Constants.PREF_UUID, ""))
+                    .build();
+
+            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
+                    Message.getConfiguredGson().toJson(message));
         } else {
             Log.w(TAG, "ApplicationConnection is not success: " + result.getStatus());
         }

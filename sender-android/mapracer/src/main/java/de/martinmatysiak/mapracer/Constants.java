@@ -15,4 +15,7 @@ public class Constants {
     public static final LatLng DEBUG_START_LOCATION = new LatLng(37.413084, -122.069217);
     public static final LatLng DEBUG_TARGET_LOCATION = new LatLng(37.420283, -122.083961);
     public static final String DEBUG_TARGET_TITLE = "Android";
+
+    public static final String PREFERENCES = "preferences";
+    public static final String PREF_UUID = "uuid";
 }

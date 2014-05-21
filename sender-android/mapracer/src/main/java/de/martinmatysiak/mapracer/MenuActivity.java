@@ -2,6 +2,7 @@ package de.martinmatysiak.mapracer;
 
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBarActivity;
@@ -22,9 +23,11 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 
 import java.io.IOException;
+import java.util.UUID;
 
 import de.martinmatysiak.mapracer.data.GameState;
 import de.martinmatysiak.mapracer.data.GameStateMessage;
+import de.martinmatysiak.mapracer.data.LoginMessage;
 import de.martinmatysiak.mapracer.data.Message;
 import de.martinmatysiak.mapracer.data.PlayerState;
 import de.martinmatysiak.mapracer.data.PlayerStateMessage;
@@ -41,6 +44,7 @@ public class MenuActivity
 
     public static final String TAG = "MenuActivity";
 
+    SharedPreferences mPreferences;
     PlayerState mPlayerState = PlayerState.WAITING;
     GameState mGameState = GameState.INIT;
     GameStateMessage.Race mRace = null;
@@ -102,6 +106,14 @@ public class MenuActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_menu);
+
+        // Generate a device-bound UUID if there isn't one yet
+        mPreferences = getSharedPreferences(Constants.PREFERENCES, MODE_PRIVATE);
+        if (!mPreferences.contains(Constants.PREF_UUID)) {
+            mPreferences.edit()
+                    .putString(Constants.PREF_UUID, UUID.randomUUID().toString())
+                    .commit();
+        }
 
         mMediaRouter = MediaRouter.getInstance(getApplicationContext());
         mMediaRouteSelector = new MediaRouteSelector.Builder()
@@ -194,11 +206,20 @@ public class MenuActivity
     @Override
     public void onResult(Cast.ApplicationConnectionResult result) {
         if (result.getStatus().isSuccess()) {
+            // Subscribe to message channel
             try {
                 Cast.CastApi.setMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE, this);
             } catch (IOException e) {
                 Log.e(TAG, "Exception while creating channel", e);
             }
+
+            // Login with our UUID
+            LoginMessage message = new LoginMessage.Builder()
+                    .withId(mPreferences.getString(Constants.PREF_UUID, ""))
+                    .build();
+
+            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
+                    Message.getConfiguredGson().toJson(message));
         } else {
             Log.w(TAG, "ApplicationConnection is not success: " + result.getStatus());
         }
