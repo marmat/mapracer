@@ -16,6 +16,7 @@ Player = function(id, game, opt_name, opt_senderId) {
   this.name = opt_name || ('Player ' + static_playerNumber++);
   this.state = null;
   this.senderId = opt_senderId || null;
+  this.suspendedState_ = null;
 
   /** Determine the player's individual color */
   this.hue = Math.round(Math.random() * 360);
@@ -54,6 +55,32 @@ Player.prototype.dispose = function() {
   this.game.leaderboard.remove(this.id);
   this.marker.setMap(null);
   this.path.setMap(null);
+};
+
+
+/** States may be set, but otherwise this player won't be visible externally. */
+Player.prototype.suspend = function() {
+  if (!this.suspendedState_) {
+    var lastState = this.state;
+    this.setState(PlayerState.WAITING);
+    this.suspendedState_ = lastState;
+  }
+};
+
+
+/** Inverse operation to suspend. */
+Player.prototype.resume = function() {
+  if (!!this.suspendedState_) {
+    var lastState = this.suspendedState_;
+    this.suspendedState_ = null;
+    this.setState(lastState);
+  }
+};
+
+
+/** @return {boolean} Whether the player is currently suspended. */
+Player.prototype.isSuspended = function() {
+  return !!this.suspendedState_;
 };
 
 
@@ -108,15 +135,24 @@ Player.prototype.setState = function(state) {
     return;
   }
 
+  // If we are currently suspended, just remember the new state, but do not
+  // act upon it.
+  if (!!this.suspendedState_) {
+    this.suspendedState_ = state;
+    return;
+  }
+
   this.state = state;
   switch (state) {
     case PlayerState.WAITING:
       this.game.leaderboard.remove(this.id);
       this.marker.setVisible(false);
+      this.path.setVisible(false);
       break;
     case PlayerState.ACTIVE:
       this.game.leaderboard.add(this.id, this.name, Infinity, this.colorLight);
       this.marker.setVisible(true);
+      this.path.setVisible(true);
       var icon = this.marker.getIcon();
       icon.fillColor = this.colorRegular;
       icon.strokeWeight = 2;

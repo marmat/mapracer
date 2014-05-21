@@ -108,10 +108,20 @@ MapRacer.prototype.initializeMap_ = function() {
 MapRacer.prototype.broadcastState_ = function() {
   this.messageBus.broadcast({
     type: MessageType.GAME_STATE,
-    players: Object.keys(this.players).length,
+    players: this.getPlayerCount(),
     race: this.race.serialize(),
     state: this.state
   });
+};
+
+
+/** @return {number} The number of players that are alive. */
+MapRacer.prototype.getPlayerCount = function() {
+  var isAlive = function(playerId) {
+    return !this.players[playerId].isSuspended();
+  };
+
+  return Object.keys(this.players).filter(isAlive, this).length;
 };
 
 
@@ -309,6 +319,7 @@ MapRacer.prototype.onLogin = function(senderId, payload) {
 
   // Check if a sender has just reconnected or if it's an entirely new one
   if (payload.id in this.players) {
+    this.players[payload.id].resume();
     this.players[payload.id].setSenderId(senderId);
   } else {
     this.players[payload.id] = new Player(payload.id, this,
@@ -336,9 +347,16 @@ MapRacer.prototype.onDisconnect = function(client) {
   }
 
   var playerId = this.senders[client.data];
-  this.players[playerId].dispose();
-  delete this.players[playerId];
+  if (!(playerId in this.players)) {
+    return;
+  }
 
+  // Note: when switching views in Android, the client first disconnects and
+  // then reconnects. If we delete the player after disconnect, we lose him
+  // (bad!). Instead, we will have to "suspend" the user (make him invisible for
+  // all intents and purposes), but keep it in the player object nonetheless.
+
+  this.players[playerId].suspend();
   this.broadcastState_();
   this.maybeFinishRace();
 };
