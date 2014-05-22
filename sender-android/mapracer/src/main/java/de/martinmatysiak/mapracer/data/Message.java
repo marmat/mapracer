@@ -28,7 +28,16 @@ public class Message {
         this.type = type;
     }
 
+    public String toJson() {
+        return gsonInstance.toJson(this);
+    }
+
     public static Gson getConfiguredGson() {
         return gsonInstance;
     }
+
+    public static Message fromJson(String json) {
+        return gsonInstance.fromJson(json, Message.class);
+    }
+
 }

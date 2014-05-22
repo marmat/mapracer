@@ -188,8 +188,7 @@ public class MenuActivity
                 .withTarget(Constants.DEBUG_TARGET_TITLE, Constants.DEBUG_TARGET_LOCATION)
                 .build();
 
-        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
-                Message.getConfiguredGson().toJson(message));
+        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
     }
 
     private void updateUi() {
@@ -218,8 +217,7 @@ public class MenuActivity
                     .withId(mPreferences.getString(Constants.PREF_UUID, ""))
                     .build();
 
-            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
-                    Message.getConfiguredGson().toJson(message));
+            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
         } else {
             Log.w(TAG, "ApplicationConnection is not success: " + result.getStatus());
         }
@@ -229,7 +227,7 @@ public class MenuActivity
     public void onMessageReceived(CastDevice castDevice, String namespace, String json) {
         Log.d(TAG, "onMessageReceived: " + json);
 
-        Message message = Message.getConfiguredGson().fromJson(json, Message.class);
+        Message message = Message.fromJson(json);
 
         if (message instanceof GameStateMessage) {
             GameStateMessage gsm = (GameStateMessage) message;

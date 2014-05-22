@@ -19,7 +19,6 @@ import java.io.IOException;
 
 import de.martinmatysiak.mapracer.data.GameStateMessage;
 import de.martinmatysiak.mapracer.data.LoginMessage;
-import de.martinmatysiak.mapracer.data.Message;
 import de.martinmatysiak.mapracer.data.PositionMessage;
 
 
@@ -128,8 +127,7 @@ public class MapActivity
                     .withId(mPreferences.getString(Constants.PREF_UUID, ""))
                     .build();
 
-            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
-                    Message.getConfiguredGson().toJson(message));
+            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
         } else {
             Log.w(TAG, "ApplicationConnection is not success: " + result.getStatus());
         }
@@ -146,7 +144,6 @@ public class MapActivity
                 .withLocation(location.position)
                 .build();
 
-        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
-                Message.getConfiguredGson().toJson(message));
+        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
     }
 }
