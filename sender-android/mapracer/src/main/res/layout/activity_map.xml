@@ -4,9 +4,10 @@
     android:layout_height="match_parent"
     tools:context="de.martinmatysiak.mapracer.MapActivity">
 
-    <WebView
+
+    <fragment
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
+        android:name="com.google.android.gms.maps.StreetViewPanoramaFragment"
         android:id="@+id/streetView" />
-
 </RelativeLayout>

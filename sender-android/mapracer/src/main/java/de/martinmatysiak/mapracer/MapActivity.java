@@ -5,14 +5,14 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
-import android.webkit.JavascriptInterface;
-import android.webkit.WebView;
 
 import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.maps.StreetViewPanorama;
+import com.google.android.gms.maps.StreetViewPanoramaFragment;
 
 import java.io.IOException;
 
@@ -35,6 +35,7 @@ public class MapActivity
     GoogleApiClient mApiClient;
     GameStateMessage.Race mRace;
     SharedPreferences mPreferences;
+    StreetViewPanorama mPanorama;
 
 
     Cast.Listener mCastClientListener = new Cast.Listener() {
@@ -72,13 +73,9 @@ public class MapActivity
         mSelectedDevice = intent.getParcelableExtra(Constants.INTENT_DEVICE);
         Log.d(TAG, "Device: " + mSelectedDevice.getDeviceId());
 
-        // Initialize the StreetView
-        WebView streetView = (WebView) findViewById(R.id.streetView);
-
-        streetView.getSettings().setJavaScriptEnabled(true);
-        streetView.addJavascriptInterface(this, "AndroidCast");
-        streetView.loadUrl("file:///android_asset/index.html#" +
-                mRace.startLocation.latitude + "," + mRace.startLocation.longitude);
+        // Initialize the StreetViewPanorama
+        mPanorama = ((StreetViewPanoramaFragment) getFragmentManager().findFragmentById(R.id.streetView)).getStreetViewPanorama();
+        mPanorama.setPosition(mRace.startLocation);
 
         // Reconnect to the cast device and enable communication
         Cast.CastOptions.Builder apiOptionsBuilder = Cast.CastOptions
@@ -137,10 +134,5 @@ public class MapActivity
     @Override
     public void onMessageReceived(CastDevice castDevice, String namespace, String message) {
         Log.d(TAG, "onMessageReceived: " + message);
-    }
-
-    @JavascriptInterface
-    public void sendMessage(String message) {
-        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message);
     }
 }
