@@ -86,7 +86,8 @@ Player.prototype.isSuspended = function() {
 
 /** @return {boolean} Whether the player is currently active. */
 Player.prototype.isActive = function() {
-  return this.state == PlayerState.ACTIVE;
+  return this.state == PlayerState.ACTIVE ||
+      (this.suspendedState_ && this.suspendedState_ == PlayerState.ACTIVE);
 };
 
 

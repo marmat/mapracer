@@ -164,7 +164,7 @@ MapRacer.prototype.setState = function(state) {
 MapRacer.prototype.maybeStartRace = function() {
   if (!this.race.startLocation ||
       !this.race.targetLocation ||
-      Object.keys(this.players).length < MIN_PLAYERS) {
+      this.getPlayerCount() < MIN_PLAYERS) {
     // we are not ready yet
     return;
   }
