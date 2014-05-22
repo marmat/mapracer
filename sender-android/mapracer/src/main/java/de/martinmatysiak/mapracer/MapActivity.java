@@ -13,12 +13,14 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.maps.StreetViewPanorama;
 import com.google.android.gms.maps.StreetViewPanoramaFragment;
+import com.google.android.gms.maps.model.StreetViewPanoramaLocation;
 
 import java.io.IOException;
 
 import de.martinmatysiak.mapracer.data.GameStateMessage;
 import de.martinmatysiak.mapracer.data.LoginMessage;
 import de.martinmatysiak.mapracer.data.Message;
+import de.martinmatysiak.mapracer.data.PositionMessage;
 
 
 public class MapActivity
@@ -27,7 +29,8 @@ public class MapActivity
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         Cast.MessageReceivedCallback,
-        ResultCallback<Cast.ApplicationConnectionResult> {
+        ResultCallback<Cast.ApplicationConnectionResult>,
+        StreetViewPanorama.OnStreetViewPanoramaChangeListener {
 
     final static String TAG = "MapActivity";
 
@@ -76,6 +79,7 @@ public class MapActivity
         // Initialize the StreetViewPanorama
         mPanorama = ((StreetViewPanoramaFragment) getFragmentManager().findFragmentById(R.id.streetView)).getStreetViewPanorama();
         mPanorama.setPosition(mRace.startLocation);
+        mPanorama.setOnStreetViewPanoramaChangeListener(this);
 
         // Reconnect to the cast device and enable communication
         Cast.CastOptions.Builder apiOptionsBuilder = Cast.CastOptions
@@ -134,5 +138,15 @@ public class MapActivity
     @Override
     public void onMessageReceived(CastDevice castDevice, String namespace, String message) {
         Log.d(TAG, "onMessageReceived: " + message);
+    }
+
+    @Override
+    public void onStreetViewPanoramaChange(StreetViewPanoramaLocation location) {
+        PositionMessage message = new PositionMessage.Builder()
+                .withLocation(location.position)
+                .build();
+
+        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
+                Message.getConfiguredGson().toJson(message));
     }
 }
