@@ -277,6 +277,9 @@ MapRacer.prototype.onCastMessage = function(message) {
     case MessageType.LOGIN:
       this.onLogin(message.senderId, data);
       break;
+    case MessageType.LOGOUT:
+      this.onLogout(message.senderId, data);
+      break;
   }
 };
 
@@ -329,6 +332,30 @@ MapRacer.prototype.onLogin = function(senderId, payload) {
   this.senders[senderId] = payload.id;
   this.broadcastState_();
   this.maybeStartRace();
+};
+
+
+/**
+ * A logout message indicates that the player has no intention of coming back
+ * i.e. he isn't disconnecting because of switching views or something like
+ * that. This allows us to completely remove the player.
+ * @param {string} senderId The sender's cast ID.
+ * @param {Object} payload The logout object.
+ */
+MapRacer.prototype.onLogout = function(senderId, payload) {
+  if (!(senderId in this.senders)) {
+    return;
+  }
+
+  var playerId = this.senders[senderId];
+  if (!(playerId in this.players)) {
+    return;
+  }
+
+  this.players[playerId].dispose();
+  delete this.players[playerId];
+  this.broadcastState_();
+  this.maybeFinishRace();
 };
 
 

@@ -40,6 +40,7 @@
       }
       document.querySelector('#transmit').onclick = onTransmitClick;
       document.querySelector('#login').onclick = onLoginClick;
+      document.querySelector('#logout').onclick = onLogoutClick;
     }
 
     function onInitSuccess() {
@@ -120,6 +121,15 @@
 
     }
 
+    function onLogoutClick(e) {
+      var payload = {
+        type: 'logout'
+      };
+
+      session.sendMessage(NAMESPACE, payload,
+          onTransmitSuccess, onTransmitError);
+    }
+
     function onMapsClick(e) {
       if (clickTarget != null) {
         clickTarget.value = e.latLng.toUrlValue();
@@ -165,6 +175,9 @@
   <input id="player_id" placeholder="ID" />
   <input id="player_name" placeholder="Name" />
   <button id="login" type="button">Login</button>
+
+  <h2>Logout:</h2>
+  <button id="logout" type="button">Logout</button>
 
   <h2>Send position update:</h2>
   <div id="map" style="height:300px; width:500px"></div>
