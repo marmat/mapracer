@@ -10,6 +10,7 @@ public class Constants {
     public static final String CAST_NAMESPACE = "urn:x-cast:de.martinmatysiak.mapracer";
 
     public static final String INTENT_DEVICE = "device";
+    public static final String INTENT_STATE = "state";
     public static final String INTENT_RACE = "race";
 
     public static final LatLng DEBUG_START_LOCATION = new LatLng(37.413084, -122.069217);

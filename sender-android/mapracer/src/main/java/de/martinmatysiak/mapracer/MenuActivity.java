@@ -28,6 +28,7 @@ import java.util.UUID;
 import de.martinmatysiak.mapracer.data.GameState;
 import de.martinmatysiak.mapracer.data.GameStateMessage;
 import de.martinmatysiak.mapracer.data.LoginMessage;
+import de.martinmatysiak.mapracer.data.LogoutMessage;
 import de.martinmatysiak.mapracer.data.Message;
 import de.martinmatysiak.mapracer.data.PlayerState;
 import de.martinmatysiak.mapracer.data.PlayerStateMessage;
@@ -80,6 +81,10 @@ public class MenuActivity
         @Override
         public void onRouteSelected(MediaRouter router, MediaRouter.RouteInfo route) {
             mSelectedDevice = CastDevice.getFromBundle(route.getExtras());
+            if (mSelectedDevice == null) {
+                return;
+            }
+
             Log.d(TAG, "Got device: " + mSelectedDevice.getDeviceId());
 
             Cast.CastOptions.Builder apiOptionsBuilder = Cast.CastOptions
@@ -106,6 +111,7 @@ public class MenuActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_menu);
+        Log.d(TAG, "onCreate");
 
         // Generate a device-bound UUID if there isn't one yet
         mPreferences = getSharedPreferences(Constants.PREFERENCES, MODE_PRIVATE);
@@ -119,6 +125,11 @@ public class MenuActivity
         mMediaRouteSelector = new MediaRouteSelector.Builder()
                 .addControlCategory(CastMediaControlIntent.categoryForCast(Constants.CAST_APP_ID))
                 .build();
+
+        // Check if we are already casting somewhere
+        if (mMediaRouter.getSelectedRoute() != null) {
+            mMediaRouterCallback.onRouteSelected(mMediaRouter, mMediaRouter.getSelectedRoute());
+        }
     }
 
     @Override
@@ -126,10 +137,29 @@ public class MenuActivity
         super.onResume();
         mMediaRouter.addCallback(mMediaRouteSelector, mMediaRouterCallback,
                 MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN);
+
+        if (mApiClient != null && mApiClient.isConnected()) {
+            try {
+                Cast.CastApi.setMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE, this);
+            } catch (IOException ex) {
+                Log.w(TAG, "Exception while reconnecting to messaging channel", ex);
+            }
+        }
+
+        Log.d(TAG, "selected device: " + (mSelectedDevice == null ? "null" : mSelectedDevice.toString()));
+        updateUi();
     }
 
     @Override
     protected void onPause() {
+        if (mApiClient != null && mApiClient.isConnected()) {
+            try {
+                Cast.CastApi.removeMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE);
+            } catch (IOException ex) {
+                Log.w(TAG, "Exception while removing messaging callback", ex);
+            }
+        }
+
         if (isFinishing()) {
             mMediaRouter.removeCallback(mMediaRouterCallback);
         }
@@ -137,8 +167,10 @@ public class MenuActivity
     }
 
     @Override
-    protected void onStop() {
+    protected void onDestroy() {
         if (mSelectedDevice != null) {
+            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
+                    new LogoutMessage().toJson());
             Cast.CastApi.leaveApplication(mApiClient);
         }
         super.onStop();
@@ -243,8 +275,10 @@ public class MenuActivity
                 (mGameState == GameState.LOAD || mGameState == GameState.RACE)) {
             Intent intent = new Intent(this, MapActivity.class);
             intent.putExtra(Constants.INTENT_DEVICE, mSelectedDevice);
+            intent.putExtra(Constants.INTENT_STATE, mGameState);
             intent.putExtra(Constants.INTENT_RACE, mRace);
             startActivity(intent);
+
         }
     }
 }

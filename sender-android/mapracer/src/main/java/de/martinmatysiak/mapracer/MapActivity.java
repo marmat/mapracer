@@ -17,8 +17,10 @@ import com.google.android.gms.maps.model.StreetViewPanoramaLocation;
 
 import java.io.IOException;
 
+import de.martinmatysiak.mapracer.data.GameState;
 import de.martinmatysiak.mapracer.data.GameStateMessage;
 import de.martinmatysiak.mapracer.data.LoginMessage;
+import de.martinmatysiak.mapracer.data.Message;
 import de.martinmatysiak.mapracer.data.PositionMessage;
 
 
@@ -79,6 +81,7 @@ public class MapActivity
         mPanorama = ((StreetViewPanoramaFragment) getFragmentManager().findFragmentById(R.id.streetView)).getStreetViewPanorama();
         mPanorama.setPosition(mRace.startLocation);
         mPanorama.setOnStreetViewPanoramaChangeListener(this);
+        setState((GameState) intent.getSerializableExtra(Constants.INTENT_STATE));
 
         // Reconnect to the cast device and enable communication
         Cast.CastOptions.Builder apiOptionsBuilder = Cast.CastOptions
@@ -91,6 +94,24 @@ public class MapActivity
                 .build();
 
         mApiClient.connect();
+    }
+
+    private void setState(GameState state) {
+        switch (state) {
+            case LOAD:
+            case RACE:
+                if (mPanorama != null) {
+                    mPanorama.setUserNavigationEnabled(state == GameState.RACE);
+                }
+                break;
+            case SCORES:
+                // show some kind of message popup or something
+                Log.d(TAG, "Race is done.");
+                break;
+            case INIT:
+                finish();
+                break;
+        }
     }
 
     @Override
@@ -134,8 +155,12 @@ public class MapActivity
     }
 
     @Override
-    public void onMessageReceived(CastDevice castDevice, String namespace, String message) {
-        Log.d(TAG, "onMessageReceived: " + message);
+    public void onMessageReceived(CastDevice castDevice, String namespace, String json) {
+        Log.d(TAG, "onMessageReceived: " + json);
+        Message message = Message.fromJson(json);
+        if (message instanceof GameStateMessage) {
+            setState(((GameStateMessage) message).state);
+        }
     }
 
     @Override
@@ -144,6 +169,8 @@ public class MapActivity
                 .withLocation(location.position)
                 .build();
 
-        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
+        if (mApiClient.isConnected()) {
+            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
+        }
     }
 }
