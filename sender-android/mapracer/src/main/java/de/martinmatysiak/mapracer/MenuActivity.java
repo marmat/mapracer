@@ -45,6 +45,7 @@ public class MenuActivity
 
     public static final String TAG = "MenuActivity";
 
+    boolean mMapLaunched = false;
     SharedPreferences mPreferences;
     PlayerState mPlayerState = PlayerState.WAITING;
     GameState mGameState = GameState.INIT;
@@ -57,13 +58,6 @@ public class MenuActivity
             if (mApiClient != null) {
                 Log.d(TAG, "onApplicationStatusChanged: "
                         + Cast.CastApi.getApplicationStatus(mApiClient));
-            }
-        }
-
-        @Override
-        public void onVolumeChanged() {
-            if (mApiClient != null) {
-                Log.d(TAG, "onVolumeChanged: " + Cast.CastApi.getVolume(mApiClient));
             }
         }
 
@@ -121,6 +115,7 @@ public class MenuActivity
                     .commit();
         }
 
+        // Configure MediaRouter for our application
         mMediaRouter = MediaRouter.getInstance(getApplicationContext());
         mMediaRouteSelector = new MediaRouteSelector.Builder()
                 .addControlCategory(CastMediaControlIntent.categoryForCast(Constants.CAST_APP_ID))
@@ -135,6 +130,7 @@ public class MenuActivity
     @Override
     protected void onResume() {
         super.onResume();
+        Log.d(TAG, "onResume");
         mMediaRouter.addCallback(mMediaRouteSelector, mMediaRouterCallback,
                 MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN);
 
@@ -151,28 +147,16 @@ public class MenuActivity
     }
 
     @Override
-    protected void onPause() {
-        if (mApiClient != null && mApiClient.isConnected()) {
-            try {
-                Cast.CastApi.removeMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE);
-            } catch (IOException ex) {
-                Log.w(TAG, "Exception while removing messaging callback", ex);
-            }
-        }
-
-        if (isFinishing()) {
+    protected void onStop() {
+        Log.d(TAG, "onStop:" + (isFinishing() ? "true" : "false"));
+        if (isFinishing() && mSelectedDevice != null) {
             mMediaRouter.removeCallback(mMediaRouterCallback);
-        }
-        super.onPause();
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (mSelectedDevice != null) {
             Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
                     new LogoutMessage().toJson());
             Cast.CastApi.leaveApplication(mApiClient);
+            mApiClient.disconnect();
         }
+
         super.onStop();
     }
 
@@ -206,6 +190,9 @@ public class MenuActivity
     @Override
     public void onConnectionSuspended(int cause) {
         Log.w(TAG, "GoogleApi connection suspended: " + cause);
+        mApiClient.disconnect();
+        mSelectedDevice = null;
+        updateUi();
     }
 
     @Override
@@ -224,13 +211,14 @@ public class MenuActivity
     }
 
     private void updateUi() {
-        int buttons = mSelectedDevice != null ? View.VISIBLE : View.INVISIBLE;
+        int buttons = mSelectedDevice != null && mGameState == GameState.INIT ? View.VISIBLE : View.INVISIBLE;
+        int count = mSelectedDevice != null ? View.VISIBLE : View.INVISIBLE;
         int text = mSelectedDevice != null ? View.INVISIBLE : View.VISIBLE;
 
         //this.findViewById(R.id.button_custom).setVisibility(buttons);
         this.findViewById(R.id.button_quick).setVisibility(buttons);
-        this.findViewById(R.id.label_player_count).setVisibility(buttons);
-        this.findViewById(R.id.player_count).setVisibility(buttons);
+        this.findViewById(R.id.label_player_count).setVisibility(count);
+        this.findViewById(R.id.player_count).setVisibility(count);
         this.findViewById(R.id.text_cast).setVisibility(text);
     }
 
@@ -266,11 +254,19 @@ public class MenuActivity
             mGameState = gsm.state;
             mRace = gsm.race;
             ((TextView) findViewById(R.id.player_count)).setText(Integer.toString(gsm.players));
+
+            if (mGameState == GameState.INIT) {
+                // A new race will be starting, re-allow the map activity to be launched
+                mMapLaunched = false;
+            }
+
         } else if (message instanceof PlayerStateMessage) {
             mPlayerState = ((PlayerStateMessage) message).state;
         }
 
-        if (mRace != null &&
+        updateUi();
+        if (!mMapLaunched &&
+                mRace != null &&
                 mPlayerState == PlayerState.ACTIVE &&
                 (mGameState == GameState.LOAD || mGameState == GameState.RACE)) {
             Intent intent = new Intent(this, MapActivity.class);
@@ -278,7 +274,7 @@ public class MenuActivity
             intent.putExtra(Constants.INTENT_STATE, mGameState);
             intent.putExtra(Constants.INTENT_RACE, mRace);
             startActivity(intent);
-
+            mMapLaunched = true;
         }
     }
 }

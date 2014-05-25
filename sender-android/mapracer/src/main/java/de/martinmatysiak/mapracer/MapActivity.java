@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.util.Log;
 
 import com.google.android.gms.cast.Cast;
@@ -52,13 +53,6 @@ public class MapActivity
         }
 
         @Override
-        public void onVolumeChanged() {
-            if (mApiClient != null) {
-                Log.d(TAG, "onVolumeChanged: " + Cast.CastApi.getVolume(mApiClient));
-            }
-        }
-
-        @Override
         public void onApplicationDisconnected(int errorCode) {
             Log.w(TAG, "onApplicationDisconnected: " + errorCode);
             mSelectedDevice = null;
@@ -96,10 +90,19 @@ public class MapActivity
         mApiClient.connect();
     }
 
+    @Override
+    protected void onDestroy() {
+        Log.d(TAG, "onDestroy");
+        mApiClient.disconnect();
+        super.onDestroy();
+    }
+
     private void setState(GameState state) {
         switch (state) {
-            case LOAD:
             case RACE:
+                ((Vibrator) getSystemService(VIBRATOR_SERVICE)).vibrate(Constants.VIBRATE_DURATION);
+                // no break on purpose!
+            case LOAD:
                 if (mPanorama != null) {
                     mPanorama.setUserNavigationEnabled(state == GameState.RACE);
                 }

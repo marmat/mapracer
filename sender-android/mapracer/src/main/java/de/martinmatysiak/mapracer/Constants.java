@@ -19,4 +19,6 @@ public class Constants {
 
     public static final String PREFERENCES = "preferences";
     public static final String PREF_UUID = "uuid";
+
+    public static final int VIBRATE_DURATION = 400;
 }
