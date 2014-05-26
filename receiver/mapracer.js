@@ -201,6 +201,10 @@ MapRacer.prototype.maybeStartRace = function() {
 
 /***/
 MapRacer.prototype.maybeFinishRace = function() {
+  if (this.state != GameState.RACE) {
+    return;
+  }
+
   var isActive = function(id) {
     return this.players[id].isActive();
   };
