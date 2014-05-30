@@ -10,8 +10,19 @@ Leaderboard = function(container) {
   /** @private @type {Element} */
   this.container_ = container;
 
-  /** @type {Object.<string, Element>} */
-  this.entries = {};
+  /** @type {Object.<string, PlayerInfo>} */
+  this.players = {};
+
+  /** @type {Array.<PlayerInfo>} Players sorted by score. */
+  this.scores = [];
+
+  /**
+   * Placeholder for a change callback. Might be overridden by external classes.
+   * Only one client can listen to events at a time. Sufficient for now. Should
+   * be changed if we want more in the future.
+   * @type {function()}
+   */
+  this.onLeaderboardChanged = function() {};
 };
 
 
@@ -36,14 +47,22 @@ Leaderboard.prototype.add = function(id, opt_displayName, opt_sortValue,
     opt_color) {
 
   // only create an element if it's truly new
-  if (!(id in this.entries)) {
+  if (!(id in this.players)) {
     var element = document.createElement('li');
     element.innerHTML = opt_displayName || id;
     element.style.color = opt_color || 'white';
-    this.entries[id] = element;
+    this.players[id] = {
+      id: id,
+      name: element.innerHTML,
+      score: opt_sortValue || Infinity,
+      element: element
+    };
+    console.dir(this.players[id]);
+    this.scores.push(this.players[id]);
   }
 
   this.update(id, opt_sortValue || Infinity, opt_displayName);
+  this.renderList_();
 };
 
 
@@ -55,31 +74,30 @@ Leaderboard.prototype.add = function(id, opt_displayName, opt_sortValue,
  *    to the given value.
  */
 Leaderboard.prototype.update = function(id, sortValue, opt_displayName) {
-  var element = this.entries[id];
-  if (!element) {
+  var player = this.players[id];
+  if (!player) {
     return; // does not exist
   }
 
-  element.setAttribute('data-value', sortValue);
-
-  // Find first entry that has a greater sortValue
-  var ref = null;
-  for (var i = 0; i < this.container_.children.length; i++) {
-    var child = this.container_.children[i];
-    if (sortValue < child.getAttribute('data-value')) {
-      ref = child;
-      break;
-    }
-  }
+  var currentIndex = this.scores.indexOf(player);
+  this.scores.splice(currentIndex, 1);
+  player.score = sortValue;
 
   if (!!opt_displayName) {
-    element.innerHTML = opt_displayName;
+    player.element.innerHTML = opt_displayName;
   }
 
-  if (!!ref) {
-    this.container_.insertBefore(element, ref);
-  } else {
-    this.container_.appendChild(element);
+  // Find the first player with a greater score
+  for (var target = 0;
+      target < this.scores.length && this.scores[target].score <= sortValue;
+      target++);
+
+  // And put the current player into the right place
+  this.scores.splice(target, 0, player);
+
+  // Rerender if necessary
+  if (target != currentIndex) {
+    this.renderList_();
   }
 };
 
@@ -89,11 +107,38 @@ Leaderboard.prototype.update = function(id, sortValue, opt_displayName) {
  * @param {string} id The player's ID.
  */
 Leaderboard.prototype.remove = function(id) {
-  var element = this.entries[id];
-  if (!element) {
+  var player = this.players[id];
+  if (!player) {
     return; // does not exist
   }
 
-  element.parentNode.removeChild(element);
-  delete this.entries[id];
+  delete this.players[id];
+
+  player.element.parentNode.removeChild(player.element);
+  this.scores.splice(this.scores.indexOf(player), 1);
+  this.renderList_();
+};
+
+
+/** @private */
+Leaderboard.prototype.renderList_ = function() {
+  this.container_.innerHTML = '';
+  for (var i = 0; i < this.scores.length; i++) {
+    this.container_.appendChild(this.scores[i].element);
+  }
+
+  this.onLeaderboardChanged();
+};
+
+
+/** @return {List.<Object>} The ordered list of players in the leaderboard. */
+Leaderboard.prototype.getOrderedList = function() {
+  // Make sure to remove the reference to the HTML element
+  return this.scores.map(function(player) {
+    return {
+      id: player.id,
+      name: player.name,
+      score: player.score
+    };
+  });
 };

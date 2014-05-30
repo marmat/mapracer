@@ -13,6 +13,7 @@ var MessageType = {
   POSITION: 'position',
   // outgoing messages
   GAME_STATE: 'game_state',
+  GAME_SCORES: 'game_scores',
   PLAYER_STATE: 'player_state'
 };
 

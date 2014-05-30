@@ -152,6 +152,7 @@ Player.prototype.setState = function(state) {
       break;
     case PlayerState.ACTIVE:
       this.game.leaderboard.add(this.id, this.name, Infinity, this.colorLight);
+      this.onPosition(this.marker.getPosition()); // to update score
       this.marker.setVisible(true);
       this.path.setVisible(true);
       var icon = this.marker.getIcon();
