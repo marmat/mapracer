@@ -18,6 +18,7 @@ import com.google.android.gms.maps.model.StreetViewPanoramaLocation;
 
 import java.io.IOException;
 
+import de.martinmatysiak.mapracer.data.GameScoresMessage;
 import de.martinmatysiak.mapracer.data.GameState;
 import de.martinmatysiak.mapracer.data.GameStateMessage;
 import de.martinmatysiak.mapracer.data.LoginMessage;
@@ -163,6 +164,9 @@ public class MapActivity
         Message message = Message.fromJson(json);
         if (message instanceof GameStateMessage) {
             setState(((GameStateMessage) message).state);
+        } else if (message instanceof GameScoresMessage) {
+            GameScoresMessage gsm = (GameScoresMessage) message;
+            Log.d(TAG, "First place changed: " + gsm.scores.get(0).name);
         }
     }
 
