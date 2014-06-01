@@ -25,6 +25,7 @@ import com.google.android.gms.common.api.ResultCallback;
 import java.io.IOException;
 import java.util.UUID;
 
+import de.martinmatysiak.mapracer.data.GameScoresMessage;
 import de.martinmatysiak.mapracer.data.GameState;
 import de.martinmatysiak.mapracer.data.GameStateMessage;
 import de.martinmatysiak.mapracer.data.LoginMessage;
@@ -50,6 +51,7 @@ public class MenuActivity
     PlayerState mPlayerState = PlayerState.WAITING;
     GameState mGameState = GameState.INIT;
     GameStateMessage.Race mRace = null;
+    LeaderboardFragment mLeaderboard;
 
     GoogleApiClient mApiClient;
     Cast.Listener mCastClientListener = new Cast.Listener() {
@@ -113,6 +115,9 @@ public class MenuActivity
         if (savedInstanceState != null) {
             mSelectedDevice = savedInstanceState.getParcelable(Constants.INTENT_DEVICE);
         }
+
+        // Testing
+        mLeaderboard = new LeaderboardFragment();
     }
 
 
@@ -230,12 +235,30 @@ public class MenuActivity
             mRace = gsm.race;
             ((TextView) findViewById(R.id.player_count)).setText(Integer.toString(gsm.players));
 
+            switch (mGameState) {
+                case INIT:
+                    mMapLaunched = false;
+                    if (mLeaderboard.isAdded()) {
+                        getFragmentManager().beginTransaction().remove(mLeaderboard).commit();
+                    }
+                    break;
+                case RACE:
+                case SCORES:
+                    // TODO hide rest of the UI
+                    if (!mLeaderboard.isAdded()) {
+                        getFragmentManager().beginTransaction().add(android.R.id.content, mLeaderboard).commit();
+                    }
+                    break;
+            }
+
             if (mGameState == GameState.INIT) {
                 // A new race will be starting, re-allow the map activity to be launched
                 mMapLaunched = false;
             }
         } else if (message instanceof PlayerStateMessage) {
             mPlayerState = ((PlayerStateMessage) message).state;
+        } else if (message instanceof GameScoresMessage) {
+            mLeaderboard.setData(((GameScoresMessage) message).scores);
         }
 
         updateUi();
