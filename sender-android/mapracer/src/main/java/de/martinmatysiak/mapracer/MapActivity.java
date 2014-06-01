@@ -70,6 +70,10 @@ public class MapActivity
         Intent intent = getIntent();
         mRace = intent.getParcelableExtra(Constants.INTENT_RACE);
         mSelectedDevice = intent.getParcelableExtra(Constants.INTENT_DEVICE);
+        if (getActionBar() != null) {
+            getActionBar().setTitle("Race to " + mRace.targetTitle);
+        }
+
         Log.d(TAG, "Device: " + mSelectedDevice.getDeviceId());
 
         // Initialize the StreetViewPanorama

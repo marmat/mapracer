@@ -164,11 +164,6 @@ public class MenuActivity
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        return item.getItemId() == R.id.action_settings || super.onOptionsItemSelected(item);
-    }
-
-    @Override
     public void onConnected(Bundle connectionHint) {
         try {
             Cast.CastApi.launchApplication(mApiClient, Constants.CAST_APP_ID, false)
