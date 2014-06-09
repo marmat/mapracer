@@ -116,8 +116,8 @@ MapRacer.prototype.broadcastState_ = function() {
 };
 
 
-/** @private */
-MapRacer.prototype.broadcastScores_ = function() {
+/** Transmits a list of the full leaderboard to all players. */
+MapRacer.prototype.broadcastScores = function() {
   this.messageBus.broadcast({
     type: MessageType.GAME_SCORES,
     scores: this.leaderboard.getOrderedList()
@@ -154,13 +154,13 @@ MapRacer.prototype.setState = function(state) {
       this.countdown.start(COUNTDOWN_DURATION);
       break;
     case GameState.RACE:
-      this.broadcastScores_();
+      this.broadcastScores();
       this.splashEl.style.opacity = '0';
       this.race.startTime = Date.now();
       this.timerInterval_ = setInterval(this.updateTimer.bind(this), 10);
       break;
     case GameState.SCORES:
-      this.broadcastScores_();
+      this.broadcastScores();
       clearInterval(this.timerInterval_);
       this.leaderboard.setFullscreen(true);
       setTimeout(this.setState.bind(this, GameState.INIT),
@@ -276,7 +276,7 @@ MapRacer.prototype.onStreetViewLocation = function(id, panorama, status) {
 /** Will be called when the order of players has changed in the leaderboard. */
 MapRacer.prototype.onLeaderboardChanged = function() {
   if (this.state === GameState.RACE) {
-    this.broadcastScores_();
+    this.broadcastScores();
   }
 };
 

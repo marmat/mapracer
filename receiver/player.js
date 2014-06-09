@@ -170,6 +170,7 @@ Player.prototype.setState = function(state) {
       this.marker.setIcon(icon);
       this.game.leaderboard.update(this.id, -1 / this.time,
           this.name + ' (' + formatTime(this.time) + ')');
+      this.game.broadcastScores();
       this.game.maybeFinishRace();
       break;
   }
