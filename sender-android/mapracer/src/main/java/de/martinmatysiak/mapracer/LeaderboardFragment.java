@@ -9,7 +9,9 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import de.martinmatysiak.mapracer.data.GameScoresMessage;
@@ -30,8 +32,8 @@ public class LeaderboardFragment extends ListFragment {
             ((TextView) convertView.findViewById(R.id.position)).setText(Integer.toString(position + 1));
             ((TextView) convertView.findViewById(R.id.name)).setText(player.name);
             if (player.score < 0) {
-                // TODO show time
-                ((TextView) convertView.findViewById(R.id.score)).setText("finished");
+                ((TextView) convertView.findViewById(R.id.score)).setText(
+                        new SimpleDateFormat("mm:ss.SSS").format(new Date(player.time)));
             }
 
             return convertView;

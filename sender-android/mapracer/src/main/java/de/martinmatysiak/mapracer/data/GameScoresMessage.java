@@ -15,5 +15,6 @@ public class GameScoresMessage extends Message {
         public String id;
         public String name;
         public double score;
+        public long time;
     }
 }
