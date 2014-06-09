@@ -118,9 +118,19 @@ MapRacer.prototype.broadcastState_ = function() {
 
 /** Transmits a list of the full leaderboard to all players. */
 MapRacer.prototype.broadcastScores = function() {
+  // Append finishing times if they exist. This is kind of a
+  // messy solution, TODO.
+  var scores = this.leaderboard.getOrderedList().map(function(player) {
+    if (!!this.players[player.id].time) {
+      player.time = this.players[player.id].time;
+    }
+
+    return player;
+  }, this);
+
   this.messageBus.broadcast({
     type: MessageType.GAME_SCORES,
-    scores: this.leaderboard.getOrderedList()
+    scores: scores
   });
 };
 
