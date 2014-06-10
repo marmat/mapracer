@@ -21,4 +21,5 @@ public class Constants {
     public static final String PREF_UUID = "uuid";
 
     public static final int VIBRATE_DURATION = 400;
+    public static final String TIME_FORMAT = "mm:ss.SSS";
 }

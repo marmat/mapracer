@@ -244,7 +244,6 @@ public class MenuActivity
                     break;
                 case RACE:
                 case SCORES:
-                    // TODO hide rest of the UI
                     if (!mLeaderboard.isAdded()) {
                         getFragmentManager().beginTransaction().add(android.R.id.content, mLeaderboard).commit();
                     }
@@ -326,14 +325,19 @@ public class MenuActivity
     }
 
     private void updateUi() {
-        int buttons = mSelectedDevice != null && mGameState == GameState.INIT ? View.VISIBLE : View.INVISIBLE;
-        int count = mSelectedDevice != null ? View.VISIBLE : View.INVISIBLE;
-        int text = mSelectedDevice != null ? View.INVISIBLE : View.VISIBLE;
+        // We'll use an array that represents our "visibility configuration"
+        // 0: Intro Text (connect to...), 1: Buttons, 2: Player Count,
+        boolean[] visibilities = {true, false, false};
 
-        //this.findViewById(R.id.button_custom).setVisibility(buttons);
-        this.findViewById(R.id.button_quick).setVisibility(buttons);
-        this.findViewById(R.id.label_player_count).setVisibility(count);
-        this.findViewById(R.id.player_count).setVisibility(count);
-        this.findViewById(R.id.text_cast).setVisibility(text);
+        if (mSelectedDevice != null) {
+            visibilities[0] = false;
+            visibilities[1] = mGameState == GameState.INIT;
+            visibilities[2] = (mGameState == GameState.INIT || mGameState == GameState.LOAD);
+        }
+
+        this.findViewById(R.id.text_cast).setVisibility(visibilities[0] ? View.VISIBLE : View.INVISIBLE);
+        this.findViewById(R.id.button_quick).setVisibility(visibilities[1] ? View.VISIBLE : View.INVISIBLE);
+        this.findViewById(R.id.label_player_count).setVisibility(visibilities[2] ? View.VISIBLE : View.INVISIBLE);
+        this.findViewById(R.id.player_count).setVisibility(visibilities[2] ? View.VISIBLE : View.INVISIBLE);
     }
 }

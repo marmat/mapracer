@@ -33,7 +33,7 @@ public class LeaderboardFragment extends ListFragment {
             ((TextView) convertView.findViewById(R.id.name)).setText(player.name);
             if (player.score < 0) {
                 ((TextView) convertView.findViewById(R.id.score)).setText(
-                        new SimpleDateFormat("mm:ss.SSS").format(new Date(player.time)));
+                        new SimpleDateFormat(Constants.TIME_FORMAT).format(new Date(player.time)));
             }
 
             return convertView;
@@ -49,8 +49,9 @@ public class LeaderboardFragment extends ListFragment {
 
     public void setData(List<GameScoresMessage.PlayerInfo> data) {
         mData = data;
+
+        // Clearing and re-adding all elements seems to be the best (or at least simplest) approach.
         if (mAdapter != null) {
-            // TODO that's probably not the best way to do it...
             mAdapter.clear();
             mAdapter.addAll(mData);
             mAdapter.notifyDataSetChanged();
