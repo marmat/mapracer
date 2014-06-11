@@ -113,9 +113,6 @@ public class MapActivity
                 }
                 break;
             case SCORES:
-                // show some kind of message popup or something
-                Log.d(TAG, "Race is done.");
-                break;
             case INIT:
                 finish();
                 break;
