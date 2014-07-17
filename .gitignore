@@ -11,4 +11,5 @@ sftp-config.json
 *.class
 bin/
 gen/
+build/
 local.properties

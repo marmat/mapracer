@@ -7,5 +7,6 @@
     <string name="connect_cast">Cast MapRacer to your TV using the Cast button</string>
     <string name="title_activity_map">MapActivity</string>
     <string name="hello_world">Hello world!</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 
 </resources>
