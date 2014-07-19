@@ -39,6 +39,7 @@ import de.martinmatysiak.mapracer.data.RequestMessage;
 public class MenuActivity
         extends ActionBarActivity
         implements
+        CastProvider,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         Cast.MessageReceivedCallback,
@@ -102,7 +103,7 @@ public class MenuActivity
         if (!mPreferences.contains(Constants.PREF_UUID)) {
             mPreferences.edit()
                     .putString(Constants.PREF_UUID, UUID.randomUUID().toString())
-                    .commit();
+                    .apply();
         }
 
         // Configure MediaRouter for our application
@@ -184,6 +185,16 @@ public class MenuActivity
     public void onConnectionSuspended(int cause) {
         Log.w(TAG, "GoogleApi connection suspended: " + cause);
         deselectCastDevice();
+    }
+
+    @Override
+    public void addOnApiClientChangeListener(OnApiClientChangeListener listener) {
+        // TODO
+    }
+
+    @Override
+    public void removeOnApiClientChangeListener(OnApiClientChangeListener listener) {
+        // TODO
     }
 
     @Override
@@ -339,5 +350,15 @@ public class MenuActivity
         this.findViewById(R.id.button_quick).setVisibility(visibilities[1] ? View.VISIBLE : View.INVISIBLE);
         this.findViewById(R.id.label_player_count).setVisibility(visibilities[2] ? View.VISIBLE : View.INVISIBLE);
         this.findViewById(R.id.player_count).setVisibility(visibilities[2] ? View.VISIBLE : View.INVISIBLE);
+    }
+
+    @Override
+    public GoogleApiClient getApiClient() {
+        return mApiClient;
+    }
+
+    @Override
+    public CastDevice getSelectedDevice() {
+        return mSelectedDevice;
     }
 }

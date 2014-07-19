@@ -1,5 +1,6 @@
 package de.martinmatysiak.mapracer;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -9,19 +10,15 @@ import android.widget.Toast;
 
 import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
-import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.maps.StreetViewPanorama;
 import com.google.android.gms.maps.StreetViewPanoramaFragment;
 import com.google.android.gms.maps.model.StreetViewPanoramaLocation;
 
 import java.io.IOException;
 
-import de.martinmatysiak.mapracer.data.GameScoresMessage;
 import de.martinmatysiak.mapracer.data.GameState;
 import de.martinmatysiak.mapracer.data.GameStateMessage;
-import de.martinmatysiak.mapracer.data.LoginMessage;
 import de.martinmatysiak.mapracer.data.Message;
 import de.martinmatysiak.mapracer.data.PlayerState;
 import de.martinmatysiak.mapracer.data.PlayerStateMessage;
@@ -33,31 +30,13 @@ import de.martinmatysiak.mapracer.data.PositionMessage;
  * input to the Cast Receiver and processing State updates.
  */
 public class RaceFragment extends StreetViewPanoramaFragment implements
-        GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener,
+        OnApiClientChangeListener,
         Cast.MessageReceivedCallback,
-        ResultCallback<Cast.ApplicationConnectionResult>,
         StreetViewPanorama.OnStreetViewPanoramaChangeListener {
 
     final static String TAG = RaceFragment.class.getSimpleName();
 
-    Cast.Listener mCastClientListener = new Cast.Listener() {
-        @Override
-        public void onApplicationStatusChanged() {
-            if (mApiClient != null) {
-                Log.d(TAG, "onApplicationStatusChanged: "
-                        + Cast.CastApi.getApplicationStatus(mApiClient));
-            }
-        }
-
-        @Override
-        public void onApplicationDisconnected(int errorCode) {
-            Log.w(TAG, "onApplicationDisconnected: " + errorCode);
-            mSelectedDevice = null;
-        }
-    };
-
-    CastDevice mSelectedDevice;
+    CastProvider mCastProvider;
     GoogleApiClient mApiClient;
     GameStateMessage.Race mRace;
     SharedPreferences mPreferences;
@@ -92,15 +71,20 @@ public class RaceFragment extends StreetViewPanoramaFragment implements
         if (getArguments() != null) {
             setRace((GameStateMessage.Race) getArguments().getParcelable(Constants.INTENT_RACE));
             setState((GameState) getArguments().getSerializable(Constants.INTENT_STATE));
-            setDevice((CastDevice) getArguments().getParcelable(Constants.INTENT_DEVICE));
         }
     }
 
     @Override
-    public void onDestroy() {
-        Log.d(TAG, "onDestroy");
-        mApiClient.disconnect();
-        super.onDestroy();
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        try {
+            mCastProvider = (CastProvider) activity;
+        } catch (ClassCastException ex) {
+            throw new ClassCastException(activity.toString()
+                    + " must implement OnFragmentInteractionListener");
+        }
+
+        mCastProvider.addOnApiClientChangeListener(this);
     }
 
     public void setRace(GameStateMessage.Race race) {
@@ -129,71 +113,12 @@ public class RaceFragment extends StreetViewPanoramaFragment implements
         }
     }
 
-    public void setDevice(CastDevice device) {
-        mSelectedDevice = device;
-
-        // Reconnect to the cast device and enable communication
-        Cast.CastOptions.Builder apiOptionsBuilder = Cast.CastOptions
-                .builder(mSelectedDevice, mCastClientListener);
-
-        mApiClient = new GoogleApiClient.Builder(getActivity())
-                .addApi(Cast.API, apiOptionsBuilder.build())
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
-
-        mApiClient.connect();
-    }
-
-    @Override
-    public void onConnected(Bundle connectionHint) {
-        try {
-            Cast.CastApi.launchApplication(mApiClient, Constants.CAST_APP_ID, false)
-                    .setResultCallback(this);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to launch application", e);
-        }
-    }
-
-    @Override
-    public void onConnectionSuspended(int cause) {
-        Log.w(TAG, "GoogleApi connection suspended: " + cause);
-    }
-
-    @Override
-    public void onConnectionFailed(ConnectionResult result) {
-        Log.w(TAG, "GoogleApi connection failed: " + result.toString());
-    }
-
-    @Override
-    public void onResult(Cast.ApplicationConnectionResult result) {
-        if (result.getStatus().isSuccess()) {
-            try {
-                Cast.CastApi.setMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE, this);
-            } catch (IOException e) {
-                Log.e(TAG, "Exception while creating channel", e);
-            }
-
-            // Login with our UUID
-            LoginMessage message = new LoginMessage.Builder()
-                    .withId(mPreferences.getString(Constants.PREF_UUID, ""))
-                    .build();
-
-            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
-        } else {
-            Log.w(TAG, "ApplicationConnection is not success: " + result.getStatus());
-        }
-    }
-
     @Override
     public void onMessageReceived(CastDevice castDevice, String namespace, String json) {
         Log.d(TAG, "onMessageReceived: " + json);
         Message message = Message.fromJson(json);
         if (message instanceof GameStateMessage) {
             setState(((GameStateMessage) message).state);
-        } else if (message instanceof GameScoresMessage) {
-            GameScoresMessage gsm = (GameScoresMessage) message;
-            Log.d(TAG, "First place changed: " + gsm.scores.get(0).name);
         } else if (message instanceof PlayerStateMessage) {
             if (((PlayerStateMessage) message).state == PlayerState.FINISHED) {
                 Toast.makeText(getActivity(), "You've finished the race!", Toast.LENGTH_LONG).show();
@@ -213,4 +138,15 @@ public class RaceFragment extends StreetViewPanoramaFragment implements
         Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
     }
 
+    @Override
+    public void onApiClientChange(GoogleApiClient apiClient) {
+        mApiClient = apiClient;
+        if (mApiClient != null && mApiClient.isConnected()) {
+            try {
+                Cast.CastApi.setMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE, this);
+            } catch (IOException ex) {
+                Log.e(TAG, "Exception while creating channel", ex);
+            }
+        }
+    }
 }
