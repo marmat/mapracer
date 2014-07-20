@@ -6,14 +6,12 @@ import android.os.Parcelable;
 import com.google.android.gms.maps.model.LatLng;
 
 public class GameStateMessage extends Message {
-    public static final String TYPE = "game_state";
-
     public int players;
     public GameState state;
     public Race race;
 
     public GameStateMessage() {
-        super(TYPE);
+        super(MessageType.GAME_STATE);
     }
 
     public static class Race implements Parcelable {

@@ -1,10 +1,8 @@
 package de.martinmatysiak.mapracer.data;
 
 public class LogoutMessage extends Message {
-    public static final String TYPE = "logout";
-
     public LogoutMessage() {
-        super(TYPE);
+        super(MessageType.LOGOUT);
     }
 
     // This message does not really need a builder, but we add one for consistency

@@ -3,12 +3,10 @@ package de.martinmatysiak.mapracer.data;
 import java.util.List;
 
 public class GameScoresMessage extends Message {
-    public static final String TYPE = "game_scores";
-
     public List<PlayerInfo> scores;
 
     public GameScoresMessage() {
-        super(TYPE);
+        super(MessageType.GAME_SCORES);
     }
 
     public static class PlayerInfo {

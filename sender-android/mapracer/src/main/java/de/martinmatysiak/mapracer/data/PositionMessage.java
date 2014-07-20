@@ -3,12 +3,10 @@ package de.martinmatysiak.mapracer.data;
 import com.google.android.gms.maps.model.LatLng;
 
 public class PositionMessage extends Message {
-    public static final String TYPE = "position";
-
     public LatLng location;
 
     public PositionMessage() {
-        super(TYPE);
+        super(MessageType.POSITION);
     }
 
     public static class Builder {

@@ -3,15 +3,13 @@ package de.martinmatysiak.mapracer.data;
 import com.google.android.gms.maps.model.LatLng;
 
 public class RequestMessage extends Message {
-    public static final String TYPE = "request";
-
     public String targetTitle;
     public LatLng coarseUserLocation;
     public LatLng targetLocation;
     public LatLng startLocation;
 
     public RequestMessage() {
-        super(TYPE);
+        super(MessageType.REQUEST);
     }
 
     public static class Builder {

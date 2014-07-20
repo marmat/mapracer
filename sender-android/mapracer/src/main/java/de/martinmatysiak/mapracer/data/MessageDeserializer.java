@@ -18,18 +18,18 @@ public class MessageDeserializer implements JsonDeserializer<Message> {
                                final JsonDeserializationContext context) {
 
         JsonObject object = json.getAsJsonObject();
-        String type = object.get("type").getAsString();
+        MessageType type = context.deserialize(object.get("type"), MessageType.class);
 
-        if (type.equals(GameStateMessage.TYPE)) {
-            return context.deserialize(json, GameStateMessage.class);
-        } else if (type.equals(PlayerStateMessage.TYPE)) {
-            return context.deserialize(json, PlayerStateMessage.class);
-        } else if (type.equals(GameScoresMessage.TYPE)) {
-            return context.deserialize(json, GameScoresMessage.class);
-        } else {
-            // Unknown type
-            Log.w(TAG, "Received unknown message of type: " + type);
-            return new Message(type);
+        switch (type) {
+            case GAME_STATE:
+                return context.deserialize(json, GameStateMessage.class);
+            case PLAYER_STATE:
+                return context.deserialize(json, PlayerStateMessage.class);
+            case GAME_SCORES:
+                return context.deserialize(json, GameScoresMessage.class);
+            default:
+                Log.w(TAG, "Received unexpected message of type: " + type);
+                return new Message(type);
         }
     }
 }

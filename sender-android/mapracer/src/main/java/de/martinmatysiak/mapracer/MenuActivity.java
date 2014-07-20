@@ -165,35 +165,39 @@ public class MenuActivity
         Log.d(TAG, "onMessageReceived: " + json);
         Message message = Message.fromJson(json);
 
-        if (message instanceof GameStateMessage) {
-            GameStateMessage gsm = (GameStateMessage) message;
-            mGameState = gsm.state;
-            mRace = gsm.race;
-            ((TextView) findViewById(R.id.player_count)).setText(Integer.toString(gsm.players));
+        switch (message.type) {
+            case GAME_STATE:
+                GameStateMessage gsm = (GameStateMessage) message;
+                mGameState = gsm.state;
+                mRace = gsm.race;
+                ((TextView) findViewById(R.id.player_count)).setText(Integer.toString(gsm.players));
 
-            switch (mGameState) {
-                case INIT:
+                switch (mGameState) {
+                    case INIT:
+                        mMapLaunched = false;
+                        if (mLeaderboard.isAdded()) {
+                            getFragmentManager().beginTransaction().remove(mLeaderboard).commit();
+                        }
+                        break;
+                    case RACE:
+                    case SCORES:
+                        if (!mLeaderboard.isAdded()) {
+                            getFragmentManager().beginTransaction().add(android.R.id.content, mLeaderboard).commit();
+                        }
+                        break;
+                }
+
+                if (mGameState == GameState.INIT) {
+                    // A new race will be starting, re-allow the map activity to be launched
                     mMapLaunched = false;
-                    if (mLeaderboard.isAdded()) {
-                        getFragmentManager().beginTransaction().remove(mLeaderboard).commit();
-                    }
-                    break;
-                case RACE:
-                case SCORES:
-                    if (!mLeaderboard.isAdded()) {
-                        getFragmentManager().beginTransaction().add(android.R.id.content, mLeaderboard).commit();
-                    }
-                    break;
-            }
-
-            if (mGameState == GameState.INIT) {
-                // A new race will be starting, re-allow the map activity to be launched
-                mMapLaunched = false;
-            }
-        } else if (message instanceof PlayerStateMessage) {
-            mPlayerState = ((PlayerStateMessage) message).state;
-        } else if (message instanceof GameScoresMessage) {
-            mLeaderboard.setData(((GameScoresMessage) message).scores);
+                }
+                break;
+            case PLAYER_STATE:
+                mPlayerState = ((PlayerStateMessage) message).state;
+                break;
+            case GAME_SCORES:
+                mLeaderboard.setData(((GameScoresMessage) message).scores);
+                break;
         }
 
         updateUi();

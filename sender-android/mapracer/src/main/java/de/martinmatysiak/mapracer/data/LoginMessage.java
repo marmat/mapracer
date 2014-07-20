@@ -1,13 +1,11 @@
 package de.martinmatysiak.mapracer.data;
 
 public class LoginMessage extends Message {
-    public static final String TYPE = "login";
-
     public String id;
     public String name = null;
 
     public LoginMessage() {
-        super(TYPE);
+        super(MessageType.LOGIN);
     }
 
     public static class Builder {

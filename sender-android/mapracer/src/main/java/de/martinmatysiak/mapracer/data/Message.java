@@ -12,7 +12,7 @@ import java.lang.reflect.Modifier;
  */
 public class Message {
 
-    public final String type;
+    public final MessageType type;
 
     // A pre-configured Gson instance that is able to (de)serialize MapRacer Messages
     private static final Gson gsonInstance = new GsonBuilder()
@@ -20,11 +20,12 @@ public class Message {
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .registerTypeAdapter(Message.class, new MessageDeserializer())
             .registerTypeAdapter(LatLng.class, new LatLngSerializer())
+            .registerTypeAdapter(MessageType.class, new MessageTypeSerializer())
             .registerTypeAdapter(GameState.class, new GameStateSerializer())
             .registerTypeAdapter(PlayerState.class, new PlayerStateSerializer())
             .create();
 
-    public Message(String type) {
+    public Message(MessageType type) {
         this.type = type;
     }
 

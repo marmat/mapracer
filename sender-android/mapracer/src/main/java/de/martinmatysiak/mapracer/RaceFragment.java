@@ -117,12 +117,15 @@ public class RaceFragment extends StreetViewPanoramaFragment implements
     public void onMessageReceived(CastDevice castDevice, String namespace, String json) {
         Log.d(TAG, "onMessageReceived: " + json);
         Message message = Message.fromJson(json);
-        if (message instanceof GameStateMessage) {
-            setState(((GameStateMessage) message).state);
-        } else if (message instanceof PlayerStateMessage) {
-            if (((PlayerStateMessage) message).state == PlayerState.FINISHED) {
-                Toast.makeText(getActivity(), "You've finished the race!", Toast.LENGTH_LONG).show();
-            }
+        switch (message.type) {
+            case GAME_STATE:
+                setState(((GameStateMessage) message).state);
+                break;
+            case PLAYER_STATE:
+                if (((PlayerStateMessage) message).state == PlayerState.FINISHED) {
+                    Toast.makeText(getActivity(), "You've finished the race!", Toast.LENGTH_LONG).show();
+                }
+                break;
         }
     }
 
