@@ -52,12 +52,14 @@ public class MapActivity extends Activity implements CastProvider {
     @Override
     protected void onStart() {
         super.onStart();
-        mApiClientManager.create();
+        mApiClientManager.setAutoConnect(true);
+        mApiClientManager.connect();
     }
 
     @Override
     protected void onStop() {
-        mApiClientManager.destroy();
+        mApiClientManager.setAutoConnect(false);
+        mApiClientManager.disconnect();
         super.onStop();
     }
 

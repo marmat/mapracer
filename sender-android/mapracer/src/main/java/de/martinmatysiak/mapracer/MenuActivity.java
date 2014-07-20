@@ -18,18 +18,16 @@ import android.widget.TextView;
 import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.cast.CastMediaControlIntent;
-import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.ResultCallback;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import de.martinmatysiak.mapracer.data.GameScoresMessage;
 import de.martinmatysiak.mapracer.data.GameState;
 import de.martinmatysiak.mapracer.data.GameStateMessage;
-import de.martinmatysiak.mapracer.data.LoginMessage;
-import de.martinmatysiak.mapracer.data.LogoutMessage;
 import de.martinmatysiak.mapracer.data.Message;
 import de.martinmatysiak.mapracer.data.PlayerState;
 import de.martinmatysiak.mapracer.data.PlayerStateMessage;
@@ -38,14 +36,13 @@ import de.martinmatysiak.mapracer.data.RequestMessage;
 
 public class MenuActivity
         extends ActionBarActivity
-        implements
-        CastProvider,
-        GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener,
-        Cast.MessageReceivedCallback,
-        ResultCallback<Cast.ApplicationConnectionResult> {
+        implements CastProvider, Cast.MessageReceivedCallback, OnApiClientChangeListener {
 
-    public static final String TAG = "MenuActivity";
+    public static final String TAG = MenuActivity.class.getSimpleName();
+
+    GoogleApiClient mApiClient;
+    ApiClientManager mApiClientManager;
+    List<OnApiClientChangeListener> mListenerBuffer = new ArrayList<OnApiClientChangeListener>();
 
     boolean mMapLaunched = false;
     SharedPreferences mPreferences;
@@ -54,41 +51,19 @@ public class MenuActivity
     GameStateMessage.Race mRace = null;
     LeaderboardFragment mLeaderboard;
 
-    GoogleApiClient mApiClient;
-    Cast.Listener mCastClientListener = new Cast.Listener() {
-        @Override
-        public void onApplicationStatusChanged() {
-            if (mApiClient != null) {
-                Log.d(TAG, "onApplicationStatusChanged: "
-                        + Cast.CastApi.getApplicationStatus(mApiClient));
-            }
-        }
-
-        @Override
-        public void onApplicationDisconnected(int errorCode) {
-            Log.w(TAG, "onApplicationDisconnected: " + errorCode);
-            mSelectedDevice = null;
-            updateUi();
-        }
-    };
     MediaRouter mMediaRouter;
     MediaRouteSelector mMediaRouteSelector;
-    CastDevice mSelectedDevice;
     MediaRouter.Callback mMediaRouterCallback = new MediaRouter.Callback() {
         @Override
         public void onRouteSelected(MediaRouter router, MediaRouter.RouteInfo route) {
-            mSelectedDevice = CastDevice.getFromBundle(route.getExtras());
-            Log.d(TAG, "Got device: " + mSelectedDevice.getDeviceId());
-            createApiClient();
-            updateUi();
+            Log.d(TAG, "Device selected");
+            mApiClientManager.setSelectedDevice(CastDevice.getFromBundle(route.getExtras()));
         }
 
         @Override
         public void onRouteUnselected(MediaRouter router, MediaRouter.RouteInfo route) {
             Log.d(TAG, "Device unselected");
-            mSelectedDevice = null;
-            destroyApiClient(true);
-            updateUi();
+            mApiClientManager.setSelectedDevice(null);
         }
     };
 
@@ -112,9 +87,13 @@ public class MenuActivity
                 .addControlCategory(CastMediaControlIntent.categoryForCast(Constants.CAST_APP_ID))
                 .build();
 
+        // Initialize our API client manager
+        mApiClientManager = new ApiClientManager(this);
+        mApiClientManager.addOnApiClientChangeListener(this);
+
         // Check if we are already casting somewhere
         if (savedInstanceState != null) {
-            mSelectedDevice = savedInstanceState.getParcelable(Constants.INTENT_DEVICE);
+            mApiClientManager.setSelectedDevice((CastDevice) savedInstanceState.getParcelable(Constants.INTENT_DEVICE));
         }
 
         // Testing
@@ -127,9 +106,10 @@ public class MenuActivity
         super.onStart();
         Log.d(TAG, "onStart");
 
+        mApiClientManager.setAutoConnect(true);
+        mApiClientManager.connect();
         mMediaRouter.addCallback(mMediaRouteSelector, mMediaRouterCallback,
                 MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN);
-        createApiClient();
     }
 
     @Override
@@ -143,11 +123,12 @@ public class MenuActivity
     protected void onStop() {
         Log.d(TAG, "onStop:" + (isFinishing() ? "true" : "false"));
         mMediaRouter.removeCallback(mMediaRouterCallback);
+        mApiClientManager.setAutoConnect(false);
+        mApiClientManager.disconnect(isFinishing());
+
+        // Make sure to fully terminate the casting session if we're exiting
         if (isFinishing()) {
-            // Make sure to fully terminate the casting session if we're exiting
             deselectCastDevice();
-        } else {
-            destroyApiClient();
         }
 
         super.onStop();
@@ -155,7 +136,7 @@ public class MenuActivity
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        outState.putParcelable(Constants.INTENT_DEVICE, mSelectedDevice);
+        outState.putParcelable(Constants.INTENT_DEVICE, mApiClientManager.getSelectedDevice());
     }
 
     @Override
@@ -169,40 +150,6 @@ public class MenuActivity
         return true;
     }
 
-    @Override
-    public void onConnected(Bundle connectionHint) {
-        try {
-            Cast.CastApi.launchApplication(mApiClient, Constants.CAST_APP_ID, false)
-                    .setResultCallback(this);
-            updateUi();
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to launch application", e);
-            deselectCastDevice();
-        }
-    }
-
-    @Override
-    public void onConnectionSuspended(int cause) {
-        Log.w(TAG, "GoogleApi connection suspended: " + cause);
-        deselectCastDevice();
-    }
-
-    @Override
-    public void addOnApiClientChangeListener(OnApiClientChangeListener listener) {
-        // TODO
-    }
-
-    @Override
-    public void removeOnApiClientChangeListener(OnApiClientChangeListener listener) {
-        // TODO
-    }
-
-    @Override
-    public void onConnectionFailed(ConnectionResult result) {
-        Log.w(TAG, "GoogleApi connection failed: " + result.toString());
-        deselectCastDevice();
-    }
-
     public void onClick(View v) {
         // Transmit game data to the cast device
         RequestMessage message = new RequestMessage.Builder()
@@ -214,30 +161,8 @@ public class MenuActivity
     }
 
     @Override
-    public void onResult(Cast.ApplicationConnectionResult result) {
-        if (result.getStatus().isSuccess()) {
-            // Subscribe to message channel
-            try {
-                Cast.CastApi.setMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE, this);
-            } catch (IOException e) {
-                Log.e(TAG, "Exception while creating channel", e);
-            }
-
-            // Login with our UUID
-            LoginMessage message = new LoginMessage.Builder()
-                    .withId(mPreferences.getString(Constants.PREF_UUID, ""))
-                    .build();
-
-            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
-        } else {
-            Log.w(TAG, "ApplicationConnection is not success: " + result.getStatus());
-        }
-    }
-
-    @Override
     public void onMessageReceived(CastDevice castDevice, String namespace, String json) {
         Log.d(TAG, "onMessageReceived: " + json);
-
         Message message = Message.fromJson(json);
 
         if (message instanceof GameStateMessage) {
@@ -277,29 +202,12 @@ public class MenuActivity
                 mPlayerState == PlayerState.ACTIVE &&
                 (mGameState == GameState.LOAD || mGameState == GameState.RACE)) {
             Intent intent = new Intent(this, MapActivity.class);
-            intent.putExtra(Constants.INTENT_DEVICE, mSelectedDevice);
+            intent.putExtra(Constants.INTENT_DEVICE, mApiClientManager.getSelectedDevice());
             intent.putExtra(Constants.INTENT_STATE, mGameState);
             intent.putExtra(Constants.INTENT_RACE, mRace);
             startActivity(intent);
             mMapLaunched = true;
         }
-    }
-
-    private void createApiClient() {
-        if (mSelectedDevice == null) {
-            return;
-        }
-
-        Cast.CastOptions.Builder apiOptionsBuilder = Cast.CastOptions
-                .builder(mSelectedDevice, mCastClientListener);
-
-        mApiClient = new GoogleApiClient.Builder(MenuActivity.this)
-                .addApi(Cast.API, apiOptionsBuilder.build())
-                .addConnectionCallbacks(MenuActivity.this)
-                .addOnConnectionFailedListener(MenuActivity.this)
-                .build();
-
-        mApiClient.connect();
     }
 
     /**
@@ -308,31 +216,7 @@ public class MenuActivity
      */
     private void deselectCastDevice() {
         mMediaRouter.selectRoute(mMediaRouter.getDefaultRoute());
-        mSelectedDevice = null;
-        destroyApiClient(true);
-        updateUi();
-    }
-
-    private void destroyApiClient() {
-        destroyApiClient(false);
-    }
-
-    private void destroyApiClient(boolean forceLogout) {
-        if (mApiClient != null && mApiClient.isConnected()) {
-            // Indicate that the player won't be coming back anytime soon if we are closing the app
-            if (forceLogout || isFinishing()) {
-                Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
-                        new LogoutMessage().toJson());
-                Cast.CastApi.leaveApplication(mApiClient);
-            }
-
-            // Always disconnect the API client onStop as per Guidelines, otherwise we might end up
-            // with "ghost" clients still connected to the cast receiver.
-            mApiClient.disconnect();
-            mApiClient.unregisterConnectionCallbacks(this);
-            mApiClient.unregisterConnectionFailedListener(this);
-            mApiClient = null;
-        }
+        mApiClientManager.setSelectedDevice(null);
     }
 
     private void updateUi() {
@@ -340,7 +224,7 @@ public class MenuActivity
         // 0: Intro Text (connect to...), 1: Buttons, 2: Player Count,
         boolean[] visibilities = {true, false, false};
 
-        if (mSelectedDevice != null) {
+        if (mApiClientManager.getSelectedDevice() != null) {
             visibilities[0] = false;
             visibilities[1] = mGameState == GameState.INIT;
             visibilities[2] = (mGameState == GameState.INIT || mGameState == GameState.LOAD);
@@ -354,11 +238,44 @@ public class MenuActivity
 
     @Override
     public GoogleApiClient getApiClient() {
-        return mApiClient;
+        return mApiClientManager.getApiClient();
     }
 
     @Override
     public CastDevice getSelectedDevice() {
-        return mSelectedDevice;
+        return mApiClientManager.getSelectedDevice();
+    }
+
+    @Override
+    public void addOnApiClientChangeListener(OnApiClientChangeListener listener) {
+        // Delay the listener registration in case we're not ready yet
+        if (mApiClientManager == null) {
+            mListenerBuffer.add(listener);
+        } else {
+            mApiClientManager.addOnApiClientChangeListener(listener);
+        }
+    }
+
+    @Override
+    public void removeOnApiClientChangeListener(OnApiClientChangeListener listener) {
+        if (mApiClientManager == null) {
+            mListenerBuffer.remove(listener);
+        } else {
+            mApiClientManager.removeOnApiClientChangeListener(listener);
+        }
+    }
+
+    @Override
+    public void onApiClientChange(GoogleApiClient apiClient) {
+        mApiClient = apiClient;
+        if (mApiClient != null && mApiClient.isConnected()) {
+            try {
+                Cast.CastApi.setMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE, this);
+            } catch (IOException ex) {
+                Log.e(TAG, "Exception while creating channel", ex);
+            }
+        }
+
+        updateUi();
     }
 }

@@ -34,6 +34,7 @@ public class ApiClientManager
     GoogleApiClient mApiClient;
     SharedPreferences mPreferences;
     List<OnApiClientChangeListener> mOnApiClientChangeListeners;
+    boolean mAutoConnect = false;
 
     Cast.Listener mCastClientListener = new Cast.Listener() {
         @Override
@@ -47,7 +48,7 @@ public class ApiClientManager
         @Override
         public void onApplicationDisconnected(int errorCode) {
             Log.w(TAG, "onApplicationDisconnected: " + errorCode);
-            mSelectedDevice = null;
+            setSelectedDevice(null);
         }
     };
 
@@ -62,13 +63,27 @@ public class ApiClientManager
         setSelectedDevice(castDevice);
     }
 
-    public void setSelectedDevice(CastDevice device) {
+    public void setSelectedDevice(CastDevice newDevice) {
+        Log.d(TAG, "setSelectedDevice:" + (newDevice != null ? newDevice.getDeviceId() : "null"));
+        if (mSelectedDevice == newDevice) {
+            return;
+        }
+
+        CastDevice oldDevice = mSelectedDevice;
+        mSelectedDevice = newDevice;
+
         // If the device changed, we have to reinitialize the API client
-        // TODO
-        mSelectedDevice = device;
+        if (oldDevice != null) {
+            destroy();
+        }
+
+        if (newDevice != null) {
+            create();
+        }
     }
 
-    public void create() {
+    private void create() {
+        Log.d(TAG, "create");
         if (mSelectedDevice == null) {
             return;
         }
@@ -81,35 +96,60 @@ public class ApiClientManager
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
+
+        if (mAutoConnect) {
+            connect();
+        }
+
         notifyListeners();
-
-        mApiClient.connect();
     }
 
-    public void destroy() {
-        destroy(false);
+    private void destroy() {
+        Log.d(TAG, "destroy");
+        disconnect(true);
+
+        if (mApiClient != null) {
+            // Always disconnect the API client onStop as per Guidelines, otherwise we might end up
+            // with "ghost" clients still connected to the cast receiver.
+            mApiClient.unregisterConnectionCallbacks(this);
+            mApiClient.unregisterConnectionFailedListener(this);
+        }
+
+        mApiClient = null;
+        notifyListeners();
     }
 
-    public void destroy(boolean forceLogout) {
+    public void setAutoConnect(boolean autoConnect) {
+        mAutoConnect = autoConnect;
+    }
+
+    public void connect() {
+        Log.d(TAG, "connect");
+        if (mApiClient != null && !mApiClient.isConnected()) {
+            mApiClient.connect();
+        }
+    }
+
+    public void disconnect() {
+        disconnect(false);
+    }
+
+    public void disconnect(boolean logout) {
+        Log.d(TAG, "disconnect:" + logout);
         if (mApiClient != null && mApiClient.isConnected()) {
-            // Indicate that the player won't be coming back anytime soon if we are closing the app
-            if (forceLogout) {
+            if (logout) {
+                // Indicate that the player won't be coming back anytime soon
                 Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
                         new LogoutMessage().toJson());
                 Cast.CastApi.leaveApplication(mApiClient);
             }
 
-            // Always disconnect the API client onStop as per Guidelines, otherwise we might end up
-            // with "ghost" clients still connected to the cast receiver.
             mApiClient.disconnect();
-            mApiClient.unregisterConnectionCallbacks(this);
-            mApiClient.unregisterConnectionFailedListener(this);
-            mApiClient = null;
-            notifyListeners();
         }
     }
 
     private void notifyListeners() {
+        Log.d(TAG, "notifyListeners");
         for (OnApiClientChangeListener listener : mOnApiClientChangeListeners) {
             listener.onApiClientChange(mApiClient);
         }
@@ -167,7 +207,6 @@ public class ApiClientManager
             Log.w(TAG, "ApplicationConnection is not success: " + result.getStatus());
         }
     }
-
 
     @Override
     public void onConnectionSuspended(int cause) {
