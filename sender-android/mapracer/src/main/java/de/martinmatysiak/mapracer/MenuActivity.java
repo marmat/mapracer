@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import de.martinmatysiak.mapracer.data.GameScoresMessage;
 import de.martinmatysiak.mapracer.data.GameState;
 import de.martinmatysiak.mapracer.data.GameStateMessage;
 import de.martinmatysiak.mapracer.data.Message;
@@ -194,9 +193,6 @@ public class MenuActivity
                 break;
             case PLAYER_STATE:
                 mPlayerState = ((PlayerStateMessage) message).state;
-                break;
-            case GAME_SCORES:
-                mLeaderboard.setData(((GameScoresMessage) message).scores);
                 break;
         }
 

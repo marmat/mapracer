@@ -1,22 +1,34 @@
 package de.martinmatysiak.mapracer;
 
+import android.app.Activity;
 import android.app.ListFragment;
 import android.content.Context;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import com.google.android.gms.cast.Cast;
+import com.google.android.gms.cast.CastDevice;
+import com.google.android.gms.common.api.GoogleApiClient;
+
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 import de.martinmatysiak.mapracer.data.GameScoresMessage;
+import de.martinmatysiak.mapracer.data.Message;
+import de.martinmatysiak.mapracer.data.MessageType;
 
-public class LeaderboardFragment extends ListFragment {
+public class LeaderboardFragment extends ListFragment implements OnApiClientChangeListener, Cast.MessageReceivedCallback {
+
+    public static final String TAG = LeaderboardFragment.class.getSimpleName();
+
     class LeaderboardAdapter extends ArrayAdapter<GameScoresMessage.PlayerInfo> {
         public LeaderboardAdapter(Context context, List<GameScoresMessage.PlayerInfo> data) {
             super(context, R.layout.leaderboard_item, data);
@@ -40,6 +52,7 @@ public class LeaderboardFragment extends ListFragment {
         }
     }
 
+    CastProvider mCastProvider;
     LeaderboardAdapter mAdapter;
     List<GameScoresMessage.PlayerInfo> mData = new ArrayList<GameScoresMessage.PlayerInfo>();
 
@@ -59,9 +72,42 @@ public class LeaderboardFragment extends ListFragment {
     }
 
     @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        try {
+            mCastProvider = (CastProvider) activity;
+        } catch (ClassCastException ex) {
+            throw new ClassCastException(activity.toString()
+                    + " must implement CastProvider");
+        }
+
+        mCastProvider.addOnApiClientChangeListener(this);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         mAdapter = new LeaderboardAdapter(inflater.getContext(), mData);
         setListAdapter(mAdapter);
         return super.onCreateView(inflater, container, savedInstanceState);
+    }
+
+    @Override
+    public void onApiClientChange(GoogleApiClient apiClient) {
+        if (apiClient != null && apiClient.isConnected()) {
+            try {
+                Cast.CastApi.setMessageReceivedCallbacks(apiClient, Constants.CAST_NAMESPACE, this);
+            } catch (IOException ex) {
+                Log.e(TAG, "Exception while creating channel", ex);
+            }
+        }
+    }
+
+    @Override
+    public void onMessageReceived(CastDevice castDevice, String namespace, String json) {
+        Log.d(TAG, "onMessageReceived: " + json);
+        Message message = Message.fromJson(json);
+        if (message.type == MessageType.GAME_SCORES) {
+            setData(((GameScoresMessage) message).scores);
+        }
     }
 }

@@ -81,7 +81,7 @@ public class RaceFragment extends StreetViewPanoramaFragment implements
             mCastProvider = (CastProvider) activity;
         } catch (ClassCastException ex) {
             throw new ClassCastException(activity.toString()
-                    + " must implement OnFragmentInteractionListener");
+                    + " must implement CastProvider");
         }
 
         mCastProvider.addOnApiClientChangeListener(this);
