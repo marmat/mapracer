@@ -20,7 +20,6 @@ import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.cast.CastMediaControlIntent;
 import com.google.android.gms.common.api.GoogleApiClient;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -266,14 +265,20 @@ public class MenuActivity
     }
 
     @Override
+    public void addMessageReceivedCallback(String namespace, Cast.MessageReceivedCallback callback) {
+        mApiClientManager.addMessageReceivedCallback(namespace, callback);
+    }
+
+    @Override
+    public void removeMessageReceivedCallback(String namespace, Cast.MessageReceivedCallback callback) {
+        mApiClientManager.removeMessageReceivedCallback(namespace, callback);
+    }
+
+    @Override
     public void onApiClientChange(GoogleApiClient apiClient) {
         mApiClient = apiClient;
         if (mApiClient != null && mApiClient.isConnected()) {
-            try {
-                Cast.CastApi.setMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE, this);
-            } catch (IOException ex) {
-                Log.e(TAG, "Exception while creating channel", ex);
-            }
+            mApiClientManager.addMessageReceivedCallback(Constants.CAST_NAMESPACE, this);
         }
 
         updateUi();

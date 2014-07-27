@@ -15,8 +15,6 @@ import com.google.android.gms.maps.StreetViewPanorama;
 import com.google.android.gms.maps.StreetViewPanoramaFragment;
 import com.google.android.gms.maps.model.StreetViewPanoramaLocation;
 
-import java.io.IOException;
-
 import de.martinmatysiak.mapracer.data.GameState;
 import de.martinmatysiak.mapracer.data.GameStateMessage;
 import de.martinmatysiak.mapracer.data.Message;
@@ -145,11 +143,7 @@ public class RaceFragment extends StreetViewPanoramaFragment implements
     public void onApiClientChange(GoogleApiClient apiClient) {
         mApiClient = apiClient;
         if (mApiClient != null && mApiClient.isConnected()) {
-            try {
-                Cast.CastApi.setMessageReceivedCallbacks(mApiClient, Constants.CAST_NAMESPACE, this);
-            } catch (IOException ex) {
-                Log.e(TAG, "Exception while creating channel", ex);
-            }
+            mCastProvider.addMessageReceivedCallback(Constants.CAST_NAMESPACE, this);
         }
     }
 }

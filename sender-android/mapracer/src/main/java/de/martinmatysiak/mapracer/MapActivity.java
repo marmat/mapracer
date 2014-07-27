@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 
+import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.common.api.GoogleApiClient;
 
@@ -90,5 +91,15 @@ public class MapActivity extends Activity implements CastProvider {
         } else {
             mApiClientManager.removeOnApiClientChangeListener(listener);
         }
+    }
+
+    @Override
+    public void addMessageReceivedCallback(String namespace, Cast.MessageReceivedCallback callback) {
+        mApiClientManager.addMessageReceivedCallback(namespace, callback);
+    }
+
+    @Override
+    public void removeMessageReceivedCallback(String namespace, Cast.MessageReceivedCallback callback) {
+        mApiClientManager.removeMessageReceivedCallback(namespace, callback);
     }
 }

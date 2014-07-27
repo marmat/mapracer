@@ -15,7 +15,6 @@ import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.common.api.GoogleApiClient;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -74,6 +73,7 @@ public class LeaderboardFragment extends ListFragment implements OnApiClientChan
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
+        Log.d(TAG, "onAttach");
         try {
             mCastProvider = (CastProvider) activity;
         } catch (ClassCastException ex) {
@@ -93,12 +93,9 @@ public class LeaderboardFragment extends ListFragment implements OnApiClientChan
 
     @Override
     public void onApiClientChange(GoogleApiClient apiClient) {
+        Log.d(TAG, "onApiClientChange");
         if (apiClient != null && apiClient.isConnected()) {
-            try {
-                Cast.CastApi.setMessageReceivedCallbacks(apiClient, Constants.CAST_NAMESPACE, this);
-            } catch (IOException ex) {
-                Log.e(TAG, "Exception while creating channel", ex);
-            }
+            mCastProvider.addMessageReceivedCallback(Constants.CAST_NAMESPACE, this);
         }
     }
 

@@ -11,8 +11,11 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import de.martinmatysiak.mapracer.data.LoginMessage;
 import de.martinmatysiak.mapracer.data.LogoutMessage;
@@ -25,7 +28,8 @@ public class ApiClientManager
         implements CastProvider,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        ResultCallback<Cast.ApplicationConnectionResult> {
+        ResultCallback<Cast.ApplicationConnectionResult>,
+        Cast.MessageReceivedCallback {
 
     public static final String TAG = ApiClientManager.class.getSimpleName();
 
@@ -34,6 +38,7 @@ public class ApiClientManager
     GoogleApiClient mApiClient;
     SharedPreferences mPreferences;
     List<OnApiClientChangeListener> mOnApiClientChangeListeners;
+    Map<String, List<Cast.MessageReceivedCallback>> mMessageReceivedCallbacks;
     boolean mAutoConnect = false;
 
     Cast.Listener mCastClientListener = new Cast.Listener() {
@@ -56,6 +61,7 @@ public class ApiClientManager
         mContext = context;
         mPreferences = context.getSharedPreferences(Constants.PREFERENCES, Context.MODE_PRIVATE);
         mOnApiClientChangeListeners = new ArrayList<OnApiClientChangeListener>();
+        mMessageReceivedCallbacks = new HashMap<String, List<Cast.MessageReceivedCallback>>();
     }
 
     public ApiClientManager(Context context, CastDevice castDevice) {
@@ -183,6 +189,43 @@ public class ApiClientManager
     }
 
     @Override
+    public void addMessageReceivedCallback(String namespace, Cast.MessageReceivedCallback callback) {
+        if (!mMessageReceivedCallbacks.containsKey(namespace)) {
+            // First request for this namespace, subscribe to it ourselves
+            try {
+                Cast.CastApi.setMessageReceivedCallbacks(mApiClient, namespace, this);
+            } catch (IOException ex) {
+                Log.e(TAG, "Could not subscribe to channel for " + namespace, ex);
+            }
+
+            mMessageReceivedCallbacks.put(namespace, new ArrayList<Cast.MessageReceivedCallback>());
+        }
+
+        // Add the callback to the queue
+        mMessageReceivedCallbacks.get(namespace).add(callback);
+    }
+
+    @Override
+    public void removeMessageReceivedCallback(String namespace, Cast.MessageReceivedCallback callback) {
+        if (!mMessageReceivedCallbacks.containsKey(namespace)) {
+            // invalid request
+            return;
+        }
+
+        mMessageReceivedCallbacks.get(namespace).remove(callback);
+        if (mMessageReceivedCallbacks.get(namespace).size() == 0) {
+            // Listening no longer needed, remove ourselves
+            try {
+                Cast.CastApi.removeMessageReceivedCallbacks(mApiClient, namespace);
+            } catch (IOException ex) {
+                Log.e(TAG, "Could not remove listener for " + namespace, ex);
+            }
+
+            mMessageReceivedCallbacks.remove(namespace);
+        }
+    }
+
+    @Override
     public void onConnected(Bundle bundle) {
         try {
             Cast.CastApi.launchApplication(mApiClient, Constants.CAST_APP_ID, false)
@@ -218,5 +261,15 @@ public class ApiClientManager
     public void onConnectionFailed(ConnectionResult connectionResult) {
         Log.w(TAG, "GoogleApi connection failed: " + connectionResult.toString());
         notifyListeners();
+    }
+
+    @Override
+    public void onMessageReceived(CastDevice castDevice, String namespace, String message) {
+        // Propagate to all subscribed listeners
+        if (mMessageReceivedCallbacks.containsKey(namespace)) {
+            for (Cast.MessageReceivedCallback cb : mMessageReceivedCallbacks.get(namespace)) {
+                cb.onMessageReceived(castDevice, namespace, message);
+            }
+        }
     }
 }
