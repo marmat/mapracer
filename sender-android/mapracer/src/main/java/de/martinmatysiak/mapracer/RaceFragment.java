@@ -10,7 +10,6 @@ import android.widget.Toast;
 
 import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
-import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.maps.StreetViewPanorama;
 import com.google.android.gms.maps.StreetViewPanoramaFragment;
 import com.google.android.gms.maps.model.StreetViewPanoramaLocation;
@@ -28,14 +27,12 @@ import de.martinmatysiak.mapracer.data.PositionMessage;
  * input to the Cast Receiver and processing State updates.
  */
 public class RaceFragment extends StreetViewPanoramaFragment implements
-        OnApiClientChangeListener,
         Cast.MessageReceivedCallback,
         StreetViewPanorama.OnStreetViewPanoramaChangeListener {
 
     final static String TAG = RaceFragment.class.getSimpleName();
 
     CastProvider mCastProvider;
-    GoogleApiClient mApiClient;
     GameStateMessage.Race mRace;
     SharedPreferences mPreferences;
     StreetViewPanorama mPanorama;
@@ -82,7 +79,7 @@ public class RaceFragment extends StreetViewPanoramaFragment implements
                     + " must implement CastProvider");
         }
 
-        mCastProvider.addOnApiClientChangeListener(this);
+        mCastProvider.addMessageReceivedCallback(Constants.CAST_NAMESPACE, this);
     }
 
     public void setRace(GameStateMessage.Race race) {
@@ -129,21 +126,13 @@ public class RaceFragment extends StreetViewPanoramaFragment implements
 
     @Override
     public void onStreetViewPanoramaChange(StreetViewPanoramaLocation location) {
-        if (mApiClient == null || !mApiClient.isConnected()) {
+        if (mCastProvider.getConnectionStatus() != ConnectionStatus.CASTING) {
             return;
         }
 
         PositionMessage message = new PositionMessage.Builder()
                 .withLocation(location.position)
                 .build();
-        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
-    }
-
-    @Override
-    public void onApiClientChange(GoogleApiClient apiClient) {
-        mApiClient = apiClient;
-        if (mApiClient != null && mApiClient.isConnected()) {
-            mCastProvider.addMessageReceivedCallback(Constants.CAST_NAMESPACE, this);
-        }
+        mCastProvider.sendMessage(Constants.CAST_NAMESPACE, message);
     }
 }

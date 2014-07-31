@@ -6,13 +6,12 @@ import android.os.Bundle;
 
 import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
-import com.google.android.gms.common.api.GoogleApiClient;
-
-import java.util.ArrayList;
-import java.util.List;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.Status;
 
 import de.martinmatysiak.mapracer.data.GameState;
 import de.martinmatysiak.mapracer.data.GameStateMessage;
+import de.martinmatysiak.mapracer.data.Message;
 
 
 /**
@@ -26,8 +25,7 @@ public class MapActivity extends Activity implements CastProvider {
 
     public static final String TAG = MapActivity.class.getSimpleName();
 
-    ApiClientManager mApiClientManager;
-    List<OnApiClientChangeListener> mListenerBuffer = new ArrayList<OnApiClientChangeListener>();
+    ApiClientManager mApiClientManager = new ApiClientManager();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,14 +35,7 @@ public class MapActivity extends Activity implements CastProvider {
         RaceFragment race = (RaceFragment) getFragmentManager().findFragmentById(R.id.raceFragment);
         Intent intent = getIntent();
 
-        mApiClientManager = new ApiClientManager(this,
-                (CastDevice) intent.getParcelableExtra(Constants.INTENT_DEVICE));
-
-        // Make sure to register all buffered listeners
-        for (OnApiClientChangeListener listener : mListenerBuffer) {
-            mApiClientManager.addOnApiClientChangeListener(listener);
-        }
-        mListenerBuffer.clear();
+        mApiClientManager.init(this, (CastDevice) intent.getParcelableExtra(Constants.INTENT_DEVICE));
 
         race.setRace((GameStateMessage.Race) intent.getParcelableExtra(Constants.INTENT_RACE));
         race.setState((GameState) intent.getSerializableExtra(Constants.INTENT_STATE));
@@ -65,32 +56,23 @@ public class MapActivity extends Activity implements CastProvider {
     }
 
     @Override
-    public GoogleApiClient getApiClient() {
-        return mApiClientManager.getApiClient();
-    }
-
-    @Override
     public CastDevice getSelectedDevice() {
         return mApiClientManager.getSelectedDevice();
     }
 
     @Override
-    public void addOnApiClientChangeListener(OnApiClientChangeListener listener) {
-        // Delay the listener registration in case we're not ready yet
-        if (mApiClientManager == null) {
-            mListenerBuffer.add(listener);
-        } else {
-            mApiClientManager.addOnApiClientChangeListener(listener);
-        }
+    public ConnectionStatus getConnectionStatus() {
+        return mApiClientManager.getConnectionStatus();
     }
 
     @Override
-    public void removeOnApiClientChangeListener(OnApiClientChangeListener listener) {
-        if (mApiClientManager == null) {
-            mListenerBuffer.remove(listener);
-        } else {
-            mApiClientManager.removeOnApiClientChangeListener(listener);
-        }
+    public void addConnectionStatusChangeCallback(ConnectionStatusChangeCallback callback) {
+        mApiClientManager.addConnectionStatusChangeCallback(callback);
+    }
+
+    @Override
+    public void removeConnectionStatusChangeCallback(ConnectionStatusChangeCallback callback) {
+        mApiClientManager.removeConnectionStatusChangeCallback(callback);
     }
 
     @Override
@@ -101,5 +83,10 @@ public class MapActivity extends Activity implements CastProvider {
     @Override
     public void removeMessageReceivedCallback(String namespace, Cast.MessageReceivedCallback callback) {
         mApiClientManager.removeMessageReceivedCallback(namespace, callback);
+    }
+
+    @Override
+    public PendingResult<Status> sendMessage(String namespace, Message message) {
+        return mApiClientManager.sendMessage(namespace, message);
     }
 }

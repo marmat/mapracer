@@ -9,7 +9,9 @@ import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -19,6 +21,7 @@ import java.util.Map;
 
 import de.martinmatysiak.mapracer.data.LoginMessage;
 import de.martinmatysiak.mapracer.data.LogoutMessage;
+import de.martinmatysiak.mapracer.data.Message;
 
 /**
  * A helper class which takes care of all things related to handling the connection to the
@@ -33,13 +36,14 @@ public class ApiClientManager
 
     public static final String TAG = ApiClientManager.class.getSimpleName();
 
-    Context mContext;
-    CastDevice mSelectedDevice;
-    GoogleApiClient mApiClient;
-    SharedPreferences mPreferences;
-    List<OnApiClientChangeListener> mOnApiClientChangeListeners;
-    Map<String, List<Cast.MessageReceivedCallback>> mMessageReceivedCallbacks;
-    boolean mAutoConnect = false;
+    private Context mContext;
+    private CastDevice mSelectedDevice;
+    private GoogleApiClient mApiClient;
+    private SharedPreferences mPreferences;
+    private ConnectionStatus mConnectionStatus = ConnectionStatus.NOT_AVAILABLE;
+    private List<ConnectionStatusChangeCallback> mConnectionStatusChangeCallbacks = new ArrayList<ConnectionStatusChangeCallback>();
+    private Map<String, List<Cast.MessageReceivedCallback>> mMessageReceivedCallbacks = new HashMap<String, List<Cast.MessageReceivedCallback>>();
+    private boolean mAutoConnect = false;
 
     Cast.Listener mCastClientListener = new Cast.Listener() {
         @Override
@@ -54,18 +58,28 @@ public class ApiClientManager
         public void onApplicationDisconnected(int errorCode) {
             Log.w(TAG, "onApplicationDisconnected: " + errorCode);
             setSelectedDevice(null);
+            setConnectionStatus(mApiClient.isConnected() ?
+                    ConnectionStatus.CONNECTED : ConnectionStatus.DISCONNECTED);
         }
     };
 
+    public ApiClientManager() { /* empty constructor */ }
+
     public ApiClientManager(Context context) {
-        mContext = context;
-        mPreferences = context.getSharedPreferences(Constants.PREFERENCES, Context.MODE_PRIVATE);
-        mOnApiClientChangeListeners = new ArrayList<OnApiClientChangeListener>();
-        mMessageReceivedCallbacks = new HashMap<String, List<Cast.MessageReceivedCallback>>();
+        init(context);
     }
 
     public ApiClientManager(Context context, CastDevice castDevice) {
-        this(context);
+        init(context, castDevice);
+    }
+
+    public void init(Context context) {
+        init(context, null);
+    }
+
+    public void init(Context context, CastDevice castDevice) {
+        mContext = context;
+        mPreferences = context.getSharedPreferences(Constants.PREFERENCES, Context.MODE_PRIVATE);
         setSelectedDevice(castDevice);
     }
 
@@ -102,12 +116,11 @@ public class ApiClientManager
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
                 .build();
+        setConnectionStatus(ConnectionStatus.DISCONNECTED);
 
         if (mAutoConnect) {
             connect();
         }
-
-        notifyListeners();
     }
 
     private void destroy() {
@@ -122,7 +135,7 @@ public class ApiClientManager
         }
 
         mApiClient = null;
-        notifyListeners();
+        setConnectionStatus(ConnectionStatus.NOT_AVAILABLE);
     }
 
     public void setAutoConnect(boolean autoConnect) {
@@ -132,6 +145,7 @@ public class ApiClientManager
     public void connect() {
         Log.d(TAG, "connect");
         if (mApiClient != null && !mApiClient.isConnected()) {
+            setConnectionStatus(ConnectionStatus.CONNECTING);
             mApiClient.connect();
         }
     }
@@ -145,25 +159,24 @@ public class ApiClientManager
         if (mApiClient != null && mApiClient.isConnected()) {
             if (logout) {
                 // Indicate that the player won't be coming back anytime soon
-                Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE,
-                        new LogoutMessage().toJson());
+                sendMessage(Constants.CAST_NAMESPACE, new LogoutMessage());
                 Cast.CastApi.leaveApplication(mApiClient);
             }
 
             mApiClient.disconnect();
+            setConnectionStatus(ConnectionStatus.DISCONNECTED);
         }
     }
 
-    private void notifyListeners() {
-        Log.d(TAG, "notifyListeners");
-        for (OnApiClientChangeListener listener : mOnApiClientChangeListeners) {
-            listener.onApiClientChange(mApiClient);
+    private void setConnectionStatus(ConnectionStatus connectionStatus) {
+        if (mConnectionStatus == connectionStatus) {
+            return;
         }
-    }
 
-    @Override
-    public GoogleApiClient getApiClient() {
-        return mApiClient;
+        mConnectionStatus = connectionStatus;
+        for (ConnectionStatusChangeCallback listener : mConnectionStatusChangeCallbacks) {
+            listener.onConnectionStatusChange(connectionStatus);
+        }
     }
 
     @Override
@@ -172,30 +185,38 @@ public class ApiClientManager
     }
 
     @Override
-    public void addOnApiClientChangeListener(OnApiClientChangeListener listener) {
-        if (!mOnApiClientChangeListeners.contains(listener)) {
-            mOnApiClientChangeListeners.add(listener);
-        }
+    public ConnectionStatus getConnectionStatus() {
+        return mConnectionStatus;
+    }
 
-        // Notify new listener immediately if we have a non-null API client.
-        if (mApiClient != null) {
-            listener.onApiClientChange(mApiClient);
+    @Override
+    public void addConnectionStatusChangeCallback(ConnectionStatusChangeCallback callback) {
+        if (!mConnectionStatusChangeCallbacks.contains(callback)) {
+            mConnectionStatusChangeCallbacks.add(callback);
         }
     }
 
     @Override
-    public void removeOnApiClientChangeListener(OnApiClientChangeListener listener) {
-        mOnApiClientChangeListeners.remove(listener);
+    public void removeConnectionStatusChangeCallback(ConnectionStatusChangeCallback callback) {
+        mConnectionStatusChangeCallbacks.remove(callback);
+    }
+
+    @Override
+    public PendingResult<Status> sendMessage(String namespace, Message message) {
+        return Cast.CastApi.sendMessage(mApiClient, namespace, message.toJson());
     }
 
     @Override
     public void addMessageReceivedCallback(String namespace, Cast.MessageReceivedCallback callback) {
         if (!mMessageReceivedCallbacks.containsKey(namespace)) {
-            // First request for this namespace, subscribe to it ourselves
-            try {
-                Cast.CastApi.setMessageReceivedCallbacks(mApiClient, namespace, this);
-            } catch (IOException ex) {
-                Log.e(TAG, "Could not subscribe to channel for " + namespace, ex);
+            // First request for this namespace, subscribe to it ourselves if we're currently
+            // casting (otherwise it will be done in onResult).
+            if (mConnectionStatus == ConnectionStatus.CASTING) {
+                try {
+                    Cast.CastApi.setMessageReceivedCallbacks(mApiClient, namespace, this);
+                } catch (IOException ex) {
+                    Log.w(TAG, "Could not subscribe to channel for " + namespace, ex);
+                }
             }
 
             mMessageReceivedCallbacks.put(namespace, new ArrayList<Cast.MessageReceivedCallback>());
@@ -215,10 +236,12 @@ public class ApiClientManager
         mMessageReceivedCallbacks.get(namespace).remove(callback);
         if (mMessageReceivedCallbacks.get(namespace).size() == 0) {
             // Listening no longer needed, remove ourselves
-            try {
-                Cast.CastApi.removeMessageReceivedCallbacks(mApiClient, namespace);
-            } catch (IOException ex) {
-                Log.e(TAG, "Could not remove listener for " + namespace, ex);
+            if (mConnectionStatus == ConnectionStatus.CASTING) {
+                try {
+                    Cast.CastApi.removeMessageReceivedCallbacks(mApiClient, namespace);
+                } catch (IOException ex) {
+                    Log.w(TAG, "Could not remove listener for " + namespace, ex);
+                }
             }
 
             mMessageReceivedCallbacks.remove(namespace);
@@ -227,25 +250,35 @@ public class ApiClientManager
 
     @Override
     public void onConnected(Bundle bundle) {
+        setConnectionStatus(ConnectionStatus.CONNECTED);
+
         try {
             Cast.CastApi.launchApplication(mApiClient, Constants.CAST_APP_ID, false)
                     .setResultCallback(this);
         } catch (Exception e) {
             Log.e(TAG, "Failed to launch application", e);
         }
-
-        notifyListeners();
     }
 
     @Override
     public void onResult(Cast.ApplicationConnectionResult result) {
         if (result.getStatus().isSuccess()) {
+            // Resubscribe to all watched message channels
+            for (String namespace : mMessageReceivedCallbacks.keySet()) {
+                try {
+                    Cast.CastApi.setMessageReceivedCallbacks(mApiClient, namespace, this);
+                } catch (IOException ex) {
+                    Log.e(TAG, "Could not subscribe to channel " + namespace, ex);
+                }
+            }
+
             // Login with our UUID
             LoginMessage message = new LoginMessage.Builder()
                     .withId(mPreferences.getString(Constants.PREF_UUID, ""))
                     .build();
 
-            Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
+            sendMessage(Constants.CAST_NAMESPACE, message);
+            setConnectionStatus(ConnectionStatus.CASTING);
         } else {
             Log.w(TAG, "ApplicationConnection is not success: " + result.getStatus());
         }
@@ -254,13 +287,13 @@ public class ApiClientManager
     @Override
     public void onConnectionSuspended(int cause) {
         Log.w(TAG, "GoogleApi connection suspended: " + cause);
-        notifyListeners();
+        setConnectionStatus(ConnectionStatus.SUSPENDED);
     }
 
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
         Log.w(TAG, "GoogleApi connection failed: " + connectionResult.toString());
-        notifyListeners();
+        setConnectionStatus(ConnectionStatus.DISCONNECTED);
     }
 
     @Override

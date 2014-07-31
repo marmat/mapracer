@@ -18,10 +18,9 @@ import android.widget.TextView;
 import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.cast.CastMediaControlIntent;
-import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.Status;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import de.martinmatysiak.mapracer.data.GameState;
@@ -34,13 +33,11 @@ import de.martinmatysiak.mapracer.data.RequestMessage;
 
 public class MenuActivity
         extends ActionBarActivity
-        implements CastProvider, Cast.MessageReceivedCallback, OnApiClientChangeListener {
+        implements CastProvider, Cast.MessageReceivedCallback, ConnectionStatusChangeCallback {
 
     public static final String TAG = MenuActivity.class.getSimpleName();
 
-    GoogleApiClient mApiClient;
-    ApiClientManager mApiClientManager;
-    List<OnApiClientChangeListener> mListenerBuffer = new ArrayList<OnApiClientChangeListener>();
+    ApiClientManager mApiClientManager = new ApiClientManager();
 
     boolean mMapLaunched = false;
     SharedPreferences mPreferences;
@@ -86,8 +83,9 @@ public class MenuActivity
                 .build();
 
         // Initialize our API client manager
-        mApiClientManager = new ApiClientManager(this);
-        mApiClientManager.addOnApiClientChangeListener(this);
+        mApiClientManager.init(this);
+        mApiClientManager.addConnectionStatusChangeCallback(this);
+        mApiClientManager.addMessageReceivedCallback(Constants.CAST_NAMESPACE, this);
 
         // Check if we are already casting somewhere
         if (savedInstanceState != null) {
@@ -155,7 +153,7 @@ public class MenuActivity
                 .withTarget(Constants.DEBUG_TARGET_TITLE, Constants.DEBUG_TARGET_LOCATION)
                 .build();
 
-        Cast.CastApi.sendMessage(mApiClient, Constants.CAST_NAMESPACE, message.toJson());
+        sendMessage(Constants.CAST_NAMESPACE, message);
     }
 
     @Override
@@ -223,7 +221,7 @@ public class MenuActivity
         // 0: Intro Text (connect to...), 1: Buttons, 2: Player Count,
         boolean[] visibilities = {true, false, false};
 
-        if (mApiClientManager.getSelectedDevice() != null) {
+        if (mApiClientManager.getConnectionStatus() == ConnectionStatus.CASTING) {
             visibilities[0] = false;
             visibilities[1] = mGameState == GameState.INIT;
             visibilities[2] = (mGameState == GameState.INIT || mGameState == GameState.LOAD);
@@ -236,32 +234,23 @@ public class MenuActivity
     }
 
     @Override
-    public GoogleApiClient getApiClient() {
-        return mApiClientManager.getApiClient();
-    }
-
-    @Override
     public CastDevice getSelectedDevice() {
         return mApiClientManager.getSelectedDevice();
     }
 
     @Override
-    public void addOnApiClientChangeListener(OnApiClientChangeListener listener) {
-        // Delay the listener registration in case we're not ready yet
-        if (mApiClientManager == null) {
-            mListenerBuffer.add(listener);
-        } else {
-            mApiClientManager.addOnApiClientChangeListener(listener);
-        }
+    public ConnectionStatus getConnectionStatus() {
+        return mApiClientManager.getConnectionStatus();
     }
 
     @Override
-    public void removeOnApiClientChangeListener(OnApiClientChangeListener listener) {
-        if (mApiClientManager == null) {
-            mListenerBuffer.remove(listener);
-        } else {
-            mApiClientManager.removeOnApiClientChangeListener(listener);
-        }
+    public void addConnectionStatusChangeCallback(ConnectionStatusChangeCallback callback) {
+        mApiClientManager.addConnectionStatusChangeCallback(callback);
+    }
+
+    @Override
+    public void removeConnectionStatusChangeCallback(ConnectionStatusChangeCallback callback) {
+        mApiClientManager.removeConnectionStatusChangeCallback(callback);
     }
 
     @Override
@@ -275,12 +264,12 @@ public class MenuActivity
     }
 
     @Override
-    public void onApiClientChange(GoogleApiClient apiClient) {
-        mApiClient = apiClient;
-        if (mApiClient != null && mApiClient.isConnected()) {
-            mApiClientManager.addMessageReceivedCallback(Constants.CAST_NAMESPACE, this);
-        }
+    public PendingResult<Status> sendMessage(String namespace, Message message) {
+        return mApiClientManager.sendMessage(namespace, message);
+    }
 
+    @Override
+    public void onConnectionStatusChange(ConnectionStatus connectionStatus) {
         updateUi();
     }
 }

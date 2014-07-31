@@ -13,7 +13,6 @@ import android.widget.TextView;
 
 import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
-import com.google.android.gms.common.api.GoogleApiClient;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -24,7 +23,7 @@ import de.martinmatysiak.mapracer.data.GameScoresMessage;
 import de.martinmatysiak.mapracer.data.Message;
 import de.martinmatysiak.mapracer.data.MessageType;
 
-public class LeaderboardFragment extends ListFragment implements OnApiClientChangeListener, Cast.MessageReceivedCallback {
+public class LeaderboardFragment extends ListFragment implements Cast.MessageReceivedCallback {
 
     public static final String TAG = LeaderboardFragment.class.getSimpleName();
 
@@ -76,12 +75,11 @@ public class LeaderboardFragment extends ListFragment implements OnApiClientChan
         Log.d(TAG, "onAttach");
         try {
             mCastProvider = (CastProvider) activity;
+            mCastProvider.addMessageReceivedCallback(Constants.CAST_NAMESPACE, this);
         } catch (ClassCastException ex) {
             throw new ClassCastException(activity.toString()
                     + " must implement CastProvider");
         }
-
-        mCastProvider.addOnApiClientChangeListener(this);
     }
 
     @Override
@@ -89,14 +87,6 @@ public class LeaderboardFragment extends ListFragment implements OnApiClientChan
         mAdapter = new LeaderboardAdapter(inflater.getContext(), mData);
         setListAdapter(mAdapter);
         return super.onCreateView(inflater, container, savedInstanceState);
-    }
-
-    @Override
-    public void onApiClientChange(GoogleApiClient apiClient) {
-        Log.d(TAG, "onApiClientChange");
-        if (apiClient != null && apiClient.isConnected()) {
-            mCastProvider.addMessageReceivedCallback(Constants.CAST_NAMESPACE, this);
-        }
     }
 
     @Override

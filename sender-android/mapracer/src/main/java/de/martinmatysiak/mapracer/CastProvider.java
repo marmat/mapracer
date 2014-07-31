@@ -2,36 +2,35 @@ package de.martinmatysiak.mapracer;
 
 import com.google.android.gms.cast.Cast;
 import com.google.android.gms.cast.CastDevice;
-import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.Status;
+
+import de.martinmatysiak.mapracer.data.Message;
 
 public interface CastProvider {
-    /**
-     * The requesting fragment should not do any (dis-)connects, all connection related things must
-     * be handled entirely by the providing activity.
-     *
-     * @return A GoogleApiClient instance or null if not casting.
-     */
-    public GoogleApiClient getApiClient();
-
     /**
      * @return The device to which the application is currently casting. Might be null.
      */
     public CastDevice getSelectedDevice();
 
     /**
-     * Indicates that the fragment wants to be informed of changes to the ApiClient. Should call the
-     * requesting listener immediately if the Api client is currently non-null.
-     *
-     * @param listener The ApiClientChange listener.
+     * @return The connection status of the internally managed API client.
      */
-    public void addOnApiClientChangeListener(OnApiClientChangeListener listener);
+    public ConnectionStatus getConnectionStatus();
 
     /**
-     * Removes a previously registered listener. Does nothing if it wasn't registered previously.
+     * Indicates that the fragment wants to be informed of changes to the connection status.
      *
-     * @param listener The ApiClientChange listener to remove.
+     * @param callback The ConnectionStatusChange callback to add.
      */
-    public void removeOnApiClientChangeListener(OnApiClientChangeListener listener);
+    public void addConnectionStatusChangeCallback(ConnectionStatusChangeCallback callback);
+
+    /**
+     * Removes a previously registered callback. Does nothing if it wasn't registered previously.
+     *
+     * @param callback The ConnectionStatusChange callback to remove.
+     */
+    public void removeConnectionStatusChangeCallback(ConnectionStatusChangeCallback callback);
 
     /**
      * Adds the given callback to be notified in case of messages for the given namespace. Do not
@@ -50,4 +49,14 @@ public interface CastProvider {
      * @param callback  The callback function to remove.
      */
     public void removeMessageReceivedCallback(String namespace, Cast.MessageReceivedCallback callback);
+
+    /**
+     * Sends the given message via the CastApi or discards it if the client is currently
+     * not casting.
+     *
+     * @param namespace The namespace for which to send a message.
+     * @param message   The message to send.
+     * @return The CastApi's response.
+     */
+    public PendingResult<Status> sendMessage(String namespace, Message message);
 }
